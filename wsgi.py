@@ -6,7 +6,6 @@ Uses SVG rendering to avoid X11 dependencies.
 """
 import os
 import sys
-import random
 
 import flask
 from flask import request, render_template_string, jsonify
@@ -302,22 +301,6 @@ def mols_to_svg(mols, width=300, height=150):
     drawer.DrawMolecules(mols)
     drawer.FinishDrawing()
     return drawer.GetDrawingText()
-
-
-# ============================================================
-# MOCK PREDICTION - Replace this with your actual model
-# ============================================================
-
-MOCK_PRECURSORS = {
-    'CC(=O)Oc1ccccc1C(=O)O': [  # Aspirin
-        ('O=C(O)c1ccccc1O', 'CC(=O)OC(=O)C'),
-        ('c1ccccc1O', 'CC(=O)Cl'),
-    ],
-    'CC(=O)Nc1ccc(O)cc1': [  # Paracetamol
-        ('Nc1ccc(O)cc1', 'CC(=O)O'),
-        ('Nc1ccc(O)cc1', 'CC(=O)Cl'),
-    ],
-}
 
 
 
