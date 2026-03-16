@@ -4,7 +4,8 @@
       "Bash(grep -r \"flask\\\\|Flask\\\\|app\\\\|route\\\\|@app\" /Users/laabidn1/retrosynthesis-lab/DiffAlign --include=\"*.py\" 2>/dev/null | head -20)",
       "Bash(find /Users/laabidn1/retrosynthesis-lab -name \"*.py\" -path \"*/static/*\" -o -name \"*.css\" 2>/dev/null | head -20)",
       "Bash(grep -r \"sys.path\\\\|import.*sys\\\\|dirname\\\\|abspath\" /Users/laabidn1/retrosynthesis-lab/wsgi.py /Users/laabidn1/retrosynthesis-lab/DiffAlign/api/*.py)",
-      "Bash(conda run:*)"
+      "Bash(conda run:*)",
+      "Bash(find /Users/laabidn1/retrosynthesis-lab/DiffAlign/src/neuralnet -name \"*.py\" -exec grep -l \"^import\\\\|^from\" {} \\\\; | xargs -I {} bash -c \"echo '=== {} ===' && head -20 {}\")"
     ]
   }
 }

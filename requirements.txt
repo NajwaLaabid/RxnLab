@@ -1,13 +1,37 @@
+# Web / WSGI
 gunicorn
 flask
 markupsafe
+
+# Scientific computing
 numpy
 scipy
 networkx
 pandas
-omegaconf
-rdkit
 pillow
+
+# Chemistry
+rdkit
+multiset
+
+# Config & logging
+omegaconf
+hydra-core
+pyyaml
+wandb
+
+# ML framework
+pytorch-lightning
+
+# Visualization (top-level imports in diffusion helpers)
+matplotlib
+seaborn
+imageio
+
+# Evaluation metrics (top-level import in setup.py)
+fcd_torch
+
+# Misc
 tqdm
 
 # CPU-only torch
