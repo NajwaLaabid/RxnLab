@@ -45,4 +45,4 @@ EXPOSE 8080
 USER 1001
 
 # Start gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--timeout", "600", "--preload", "wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--timeout", "600", "wsgi:application"]
