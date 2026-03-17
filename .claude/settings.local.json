@@ -5,7 +5,12 @@
       "Bash(find /Users/laabidn1/retrosynthesis-lab -name \"*.py\" -path \"*/static/*\" -o -name \"*.css\" 2>/dev/null | head -20)",
       "Bash(grep -r \"sys.path\\\\|import.*sys\\\\|dirname\\\\|abspath\" /Users/laabidn1/retrosynthesis-lab/wsgi.py /Users/laabidn1/retrosynthesis-lab/DiffAlign/api/*.py)",
       "Bash(conda run:*)",
-      "Bash(find /Users/laabidn1/retrosynthesis-lab/DiffAlign/src/neuralnet -name \"*.py\" -exec grep -l \"^import\\\\|^from\" {} \\\\; | xargs -I {} bash -c \"echo '=== {} ===' && head -20 {}\")"
+      "Bash(find /Users/laabidn1/retrosynthesis-lab/DiffAlign/src/neuralnet -name \"*.py\" -exec grep -l \"^import\\\\|^from\" {} \\\\; | xargs -I {} bash -c \"echo '=== {} ===' && head -20 {}\")",
+      "Bash(find /Users/laabidn1/retrosynthesis-lab -type d -name \"*web*\" -o -name \"*api*\" -o -name \"*server*\" 2>/dev/null | head -20)",
+      "Bash(grep -n \"from.*helpers\\\\|import.*helpers\" /Users/laabidn1/retrosynthesis-lab/DiffAlign/src/neuralnet/*.py 2>/dev/null)",
+      "Bash(grep -n \"assert.*device\\\\|assert.*dtype\\\\|assert.*tensor\" /Users/laabidn1/retrosynthesis-lab/DiffAlign/src/diffusion/*.py | head -30)",
+      "Bash(grep -r \"rahti\\\\|RAHTI\\\\|openshift\\\\|k8s\\\\|kubernetes\" /Users/laabidn1/retrosynthesis-lab --include=\"*.md\" --include=\"*.py\" --include=\"*.yml\" --include=\"*.yaml\" 2>/dev/null | head -20)",
+      "Bash(oc logs:*)"
     ]
   }
 }

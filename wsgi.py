@@ -300,6 +300,11 @@ def mols_to_svg(mols, width=300, height=150):
 # ============================================================
 
 
+@application.route('/health')
+def health():
+    return jsonify({'status': 'healthy'}), 200
+
+
 @application.route('/', methods=['GET', 'POST'])
 def index():
     """Main page with form and results."""

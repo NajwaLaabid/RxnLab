@@ -75,22 +75,23 @@ spec:
           resources:
             limits:
               cpu: "1"
-              memory: 1Gi
+              memory: 2Gi
             requests:
-              cpu: 100m
-              memory: 256Mi
+              cpu: 500m
+              memory: 1Gi
           # Health checks
           livenessProbe:
             httpGet:
               path: /health
               port: 8080
-            initialDelaySeconds: 30
+            initialDelaySeconds: 120
             periodSeconds: 10
+            failureThreshold: 5
           readinessProbe:
             httpGet:
               path: /health
               port: 8080
-            initialDelaySeconds: 5
+            initialDelaySeconds: 120
             periodSeconds: 5
 
 ---
