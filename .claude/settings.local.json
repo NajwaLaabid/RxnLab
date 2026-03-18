@@ -36,7 +36,20 @@
       "Bash(git add:*)",
       "Bash(git push:*)",
       "Bash(oc cancel-build:*)",
-      "Bash(sleep 130 && curl -sk https://retrosynthesis-lab-diffalign.2.rahtiapp.fi/health --max-time 30 2>&1)"
+      "Bash(sleep 130 && curl -sk https://retrosynthesis-lab-diffalign.2.rahtiapp.fi/health --max-time 30 2>&1)",
+      "Bash(find /Users/laabidn1/retrosynthesis-lab -name \"*inference*\" -o -name \"*predict*\" -o -name \"*sample*\" | grep -E \"\\\\.\\(py|yaml\\)$\")",
+      "Bash(python -c \"import syntheseus; print\\(syntheseus.__file__\\)\" 2>/dev/null || echo \"not found in current python\")",
+      "Bash(conda activate:*)",
+      "Bash(conda info:*)",
+      "Bash(python -c \"import syntheseus; print\\(syntheseus.__file__\\)\" 2>/dev/null || conda run -n diffalign python -c \"import syntheseus; print\\(syntheseus.__file__\\)\" 2>/dev/null || pip show syntheseus 2>/dev/null | head -10)",
+      "Bash(find /Users/laabidn1/multiguide -name \"*.py\" -path \"*/syntheseus/*\" 2>/dev/null | head -20)",
+      "Bash(find /Users/laabidn1 -maxdepth 6 -name \"models.py\" -path \"*/syntheseus/*\" 2>/dev/null | head -10)",
+      "Bash(find /Users/laabidn1 -maxdepth 8 -name \"*.py\" -path \"*syntheseus*\" -exec grep -l \"class ExternalBackwardReactionModel\\\\|def process_raw_smiles_outputs\" {} \\\\; 2>/dev/null | head -10)",
+      "Bash(find /Users/laabidn1 -maxdepth 8 -path \"*/site-packages/syntheseus*\" -name \"*.py\" 2>/dev/null | head -20)",
+      "Bash(find /Users/laabidn1 -maxdepth 10 -path \"*/syntheseus/reaction_prediction*\" -name \"*.py\" 2>/dev/null | head -30)",
+      "Bash(find /Users/laabidn1/multiguide -name \"requirements*.txt\" -o -name \"setup.py\" -o -name \"setup.cfg\" -o -name \"pyproject.toml\" 2>/dev/null | head -5)",
+      "Bash(conda env:*)",
+      "Bash(pip show:*)"
     ]
   }
 }
