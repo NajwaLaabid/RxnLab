@@ -15,7 +15,28 @@
       "Bash(oc get:*)",
       "Bash(find /Users/laabidn1/retrosynthesis-lab -type f -name \"Procfile\" -o -name \"Dockerfile*\" -o -name \"docker-compose*\" -o -name \"*.yaml\" -o -name \"*.yml\" 2>/dev/null | head -20)",
       "Bash(find /Users/laabidn1/retrosynthesis-lab -type f \\\\\\( -name \"gunicorn*\" -o -name \"uwsgi*\" -o -name \"nginx*\" -o -name \"supervisor*\" -o -name \"*.conf\" \\\\\\) 2>/dev/null | head -20)",
-      "Bash(find /Users/laabidn1/retrosynthesis-lab -maxdepth 2 -type f | grep -E \"\\\\.\\(py|yaml|yml|json|sh|conf|cfg|toml|ini|txt|env\\)$\" | sort)"
+      "Bash(find /Users/laabidn1/retrosynthesis-lab -maxdepth 2 -type f | grep -E \"\\\\.\\(py|yaml|yml|json|sh|conf|cfg|toml|ini|txt|env\\)$\" | sort)",
+      "Bash(oc describe:*)",
+      "Bash(oc rollout:*)",
+      "Bash(oc apply:*)",
+      "Bash(oc annotate:*)",
+      "Bash(oc scale:*)",
+      "Bash(oc start-build:*)",
+      "Bash(curl -s -X POST https://retrosynthesis-lab-diffalign.2.rahtiapp.fi/api/predict -H 'Content-Type: application/json' -d '{\"smiles\": \"CC\\(=O\\)Oc1ccccc1C\\(=O\\)O\"}' --max-time 120 2>&1)",
+      "Bash(curl -s -X POST https://retrosynthesis-lab-diffalign.2.rahtiapp.fi/api/predict -H 'Content-Type: application/json' -d '{\"smiles\": \"CC\\(=O\\)Oc1ccccc1C\\(=O\\)O\"}' --max-time 300 2>&1)",
+      "Bash(curl -sk https://retrosynthesis-lab-diffalign.2.rahtiapp.fi/health --max-time 30 2>&1)",
+      "Bash(oc exec:*)",
+      "Bash(oc rsh:*)",
+      "Bash(oc whoami:*)",
+      "Bash(oc login:*)",
+      "Bash(oc adm:*)",
+      "Bash(oc set:*)",
+      "Bash(sleep 120 && curl -sk https://retrosynthesis-lab-diffalign.2.rahtiapp.fi/health --max-time 30 2>&1)",
+      "Bash(curl -sk -X POST https://retrosynthesis-lab-diffalign.2.rahtiapp.fi/api/predict -H 'Content-Type: application/json' -d '{\"smiles\": \"CC\\(=O\\)Oc1ccccc1C\\(=O\\)O\"}' --max-time 120 2>&1)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(oc cancel-build:*)",
+      "Bash(sleep 130 && curl -sk https://retrosynthesis-lab-diffalign.2.rahtiapp.fi/health --max-time 30 2>&1)"
     ]
   }
 }

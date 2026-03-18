@@ -9,6 +9,9 @@ metadata:
   name: rdkit-retro
   labels:
     app: rdkit-retro
+spec:
+  lookupPolicy:
+    local: true
 
 ---
 # BuildConfig - defines how to build the image from Dockerfile
@@ -66,11 +69,14 @@ spec:
     spec:
       containers:
         - name: rdkit-retro
-          # This references the image from our ImageStream
-          image: rdkit-retro:latest
+          image: image-registry.openshift-image-registry.svc:5000/diffalign/rdkit-retro:latest
           ports:
             - containerPort: 8080
               protocol: TCP
+          volumeMounts:
+            - name: checkpoints
+              mountPath: /app/DiffAlign/checkpoints
+              readOnly: true
           resources:
             limits:
               cpu: "1"
@@ -92,6 +98,10 @@ spec:
               port: 8080
             initialDelaySeconds: 120
             periodSeconds: 5
+      volumes:
+        - name: checkpoints
+          persistentVolumeClaim:
+            claimName: diffalign-align-absorbing
 
 ---
 # Service - internal load balancer for the pods

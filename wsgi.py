@@ -27,6 +27,47 @@ from DiffAlign.api import predict
 # testing
 application = flask.Flask(__name__)
 
+# Results fragment template (used by both AJAX and full-page renders)
+RESULTS_TEMPLATE = """
+{% if error %}
+<div class="results-section">
+    <div class="error">{{ error }}</div>
+</div>
+{% elif results %}
+<div class="results-section">
+    <div class="results-header">
+        <h2>Results</h2>
+    </div>
+
+    <div class="target-display">
+        {{ target_svg | safe }}
+        <div class="target-info">
+            <h3>Target</h3>
+            <div class="smiles">{{ smiles }}</div>
+            <div style="margin-top: 8px; font-size: 13px; color: #666;">
+                MW: {{ "%.1f"|format(target_mw) }} ·
+                Generated {{ results|length }} precursor set(s)
+            </div>
+        </div>
+    </div>
+
+    <h3 style="margin-bottom: 15px;">Predicted Precursor Sets</h3>
+    <div class="precursors-grid">
+        {% for result in results %}
+        <div class="precursor-card">
+            <div class="precursor-header">
+                <span class="precursor-rank">#{{ loop.index }}</span>
+                <span class="precursor-score">Score: {{ "%.3f"|format(result.score) }}</span>
+            </div>
+            <div class="mol-svg">{{ result.svg | safe }}</div>
+            <div class="precursor-smiles">{{ result.precursors }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+"""
+
 # HTML template
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -70,6 +111,7 @@ HTML_TEMPLATE = """
         }
         .param-box { background: #f8f9fa; padding: 15px; border-radius: 8px; }
         .param-box label { font-size: 13px; margin-bottom: 8px; }
+        .param-hint { font-size: 11px; color: #888; margin-top: 4px; }
         input[type="number"], select {
             width: 100%;
             padding: 10px;
@@ -90,6 +132,7 @@ HTML_TEMPLATE = """
         }
         .btn-primary { background: #4a6fa5; color: white; }
         .btn-primary:hover { background: #3d5d8a; }
+        .btn-primary:disabled { background: #a0b4cc; cursor: not-allowed; }
         .btn-secondary { background: #e9ecef; color: #495057; }
         .btn-secondary:hover { background: #dee2e6; }
         .examples { margin-top: 12px; font-size: 13px; color: #666; }
@@ -175,63 +218,27 @@ HTML_TEMPLATE = """
             border-radius: 8px;
             border-left: 4px solid #c0392b;
         }
-        /* Loading overlay */
-        .loading-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.45);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-        .loading-overlay.active { display: flex; }
-        .loading-box {
-            background: white;
-            padding: 40px 50px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-        }
-        .spinner {
-            width: 48px; height: 48px;
-            border: 5px solid #e0e0e0;
-            border-top-color: #4a6fa5;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 18px;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .loading-box p { margin: 0; color: #333; font-size: 16px; font-weight: 600; }
-        .loading-box .hint { color: #888; font-size: 13px; margin-top: 8px; font-weight: normal; }
     </style>
 </head>
 <body>
-    <div class="loading-overlay" id="loading-overlay">
-        <div class="loading-box">
-            <div class="spinner"></div>
-            <p>Running retrosynthesis...</p>
-            <p class="hint">This may take a few minutes on cloud CPU</p>
-        </div>
-    </div>
     <div class="container">
         <h1>DiffAlign: Retrosynthesis through Diffusion</h1>
         <p class="subtitle">Enter your target molecule below</p>
-        
-        <form method="post" action="/">
+
+        <form method="post" action="/" id="predict-form">
             <div class="form-group">
                 <label>Target Product <span class="label-hint">(SMILES)</span></label>
-                <input type="text" name="smiles" placeholder="Enter SMILES string of target molecule..." 
+                <input type="text" name="smiles" placeholder="Enter SMILES string of target molecule..."
                        value="{{ smiles or '' }}" id="smiles-input">
                 <div class="examples">
-                    Examples: 
+                    Examples:
                     <code onclick="setSmiles('CC(=O)Oc1ccccc1C(=O)O')">Aspirin</code>
                     <code onclick="setSmiles('CN1C=NC2=C1C(=O)N(C(=O)N2C)C')">Caffeine</code>
                     <code onclick="setSmiles('CC(C)Cc1ccc(cc1)C(C)C(=O)O')">Ibuprofen</code>
                     <code onclick="setSmiles('CC(=O)Nc1ccc(O)cc1')">Paracetamol</code>
                 </div>
             </div>
-            
+
             <div class="params-grid">
                 <div class="param-box">
                     <label>Number of Precursors</label>
@@ -239,63 +246,29 @@ HTML_TEMPLATE = """
                 </div>
                 <div class="param-box">
                     <label>Diffusion Steps</label>
-                    <input type="number" name="diffusion_steps" value="{{ diffusion_steps or 1 }}" min="1" max="1000" step="1">
-                </div>
-                <div class="param-box">
-                    <label>Temperature</label>
-                    <input type="number" name="temperature" value="{{ temperature or 1.0 }}" min="0.1" max="2.0" step="0.1">
-                </div>
-                <div class="param-box">
-                    <label>Beam Size</label>
-                    <input type="number" name="beam_size" value="{{ beam_size or 10 }}" min="1" max="50">
+                    <input type="number" name="diffusion_steps" value="{{ diffusion_steps or 1 }}" min="1" max="500" step="1">
+                    <div class="param-hint">Must divide 500 (e.g. 1, 2, 5, 10, 50, 100, 500)</div>
                 </div>
             </div>
-            
+
             <div class="btn-row">
-                <button type="submit" class="btn-primary">🔬 Predict Precursors</button>
+                <button type="submit" class="btn-primary" id="submit-btn">🔬 Predict Precursors</button>
                 <button type="button" class="btn-secondary" onclick="clearForm()">Clear</button>
             </div>
+
+            <div id="progress-container" style="display:none; margin-top:20px;">
+                <div style="background:#e9ecef; border-radius:8px; overflow:hidden; height:28px; position:relative;">
+                    <div id="progress-bar" style="height:100%; width:0%; background:linear-gradient(90deg,#4a6fa5,#5a8fd5); border-radius:8px; transition:width 0.3s ease;"></div>
+                    <span id="progress-text" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:13px; font-weight:600; color:#333;"></span>
+                </div>
+            </div>
         </form>
-        
-        {% if error %}
-        <div class="results-section">
-            <div class="error">{{ error }}</div>
+
+        <div id="results-container">
+            {{ results_html|safe }}
         </div>
-        {% elif results %}
-        <div class="results-section">
-            <div class="results-header">
-                <h2>Results</h2>
-            </div>
-            
-            <div class="target-display">
-                {{ target_svg | safe }}
-                <div class="target-info">
-                    <h3>Target</h3>
-                    <div class="smiles">{{ smiles }}</div>
-                    <div style="margin-top: 8px; font-size: 13px; color: #666;">
-                        MW: {{ "%.1f"|format(target_mw) }} · 
-                        Generated {{ results|length }} precursor set(s)
-                    </div>
-                </div>
-            </div>
-            
-            <h3 style="margin-bottom: 15px;">Predicted Precursor Sets</h3>
-            <div class="precursors-grid">
-                {% for result in results %}
-                <div class="precursor-card">
-                    <div class="precursor-header">
-                        <span class="precursor-rank">#{{ loop.index }}</span>
-                        <span class="precursor-score">Score: {{ "%.3f"|format(result.score) }}</span>
-                    </div>
-                    <div class="mol-svg">{{ result.svg | safe }}</div>
-                    <div class="precursor-smiles">{{ result.precursors }}</div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
     </div>
-    
+
     <script>
         function setSmiles(smiles) {
             document.getElementById('smiles-input').value = smiles;
@@ -303,9 +276,92 @@ HTML_TEMPLATE = """
         function clearForm() {
             document.getElementById('smiles-input').value = '';
         }
-        document.querySelector('form').addEventListener('submit', function() {
-            document.getElementById('loading-overlay').classList.add('active');
-        });
+
+        (function() {
+            var form = document.getElementById('predict-form');
+            var submitBtn = document.getElementById('submit-btn');
+            var progressContainer = document.getElementById('progress-container');
+            var progressBar = document.getElementById('progress-bar');
+            var progressText = document.getElementById('progress-text');
+            var resultsContainer = document.getElementById('results-container');
+            var timers = [];
+
+            function setProgress(pct, text) {
+                progressBar.style.width = pct + '%';
+                progressText.textContent = text;
+            }
+
+            function clearTimers() {
+                timers.forEach(function(t) { clearTimeout(t); });
+                timers = [];
+            }
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                var stepsInput = form.querySelector('[name="diffusion_steps"]');
+                var nInput = form.querySelector('[name="n_precursors"]');
+                var steps = stepsInput ? stepsInput.value : '1';
+                var n = nInput ? nInput.value : '1';
+
+                // Show progress, hide old results
+                resultsContainer.innerHTML = '';
+                progressContainer.style.display = 'block';
+                submitBtn.disabled = true;
+                clearTimers();
+
+                // Stage 0: immediate
+                setProgress(5, 'Validating input...');
+
+                // Stage 1
+                timers.push(setTimeout(function() {
+                    setProgress(15, 'Running DiffAlign with steps=' + steps + ' for ' + n + ' sample(s)...');
+                }, 800));
+
+                // Stage 2
+                timers.push(setTimeout(function() {
+                    setProgress(20, 'Preparing molecular graph...');
+                }, 2500));
+
+                // Stage 3: gradual progress from 20 to 85 over ~120s (asymptotic)
+                var startTime = Date.now();
+                var gradualInterval = setInterval(function() {
+                    var elapsed = (Date.now() - startTime) / 1000;
+                    // Asymptotic: 20 + 65 * (1 - e^(-elapsed/60))
+                    var pct = 20 + 65 * (1 - Math.exp(-elapsed / 60));
+                    if (pct > 84) pct = 84;
+                    setProgress(Math.round(pct), 'Running diffusion model...');
+                }, 1000);
+                timers.push(gradualInterval);
+
+                var formData = new FormData(form);
+                fetch('/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(function(response) { return response.text(); })
+                .then(function(html) {
+                    clearTimers();
+                    clearInterval(gradualInterval);
+                    setProgress(100, 'Complete!');
+                    setTimeout(function() {
+                        progressContainer.style.display = 'none';
+                        progressBar.style.width = '0%';
+                        resultsContainer.innerHTML = html;
+                        submitBtn.disabled = false;
+                    }, 500);
+                })
+                .catch(function(err) {
+                    clearTimers();
+                    clearInterval(gradualInterval);
+                    progressContainer.style.display = 'none';
+                    progressBar.style.width = '0%';
+                    resultsContainer.innerHTML = '<div class="results-section"><div class="error">Request failed: ' + err.message + '. Please try again.</div></div>';
+                    submitBtn.disabled = false;
+                });
+            });
+        })();
     </script>
 </body>
 </html>
@@ -325,10 +381,10 @@ def mols_to_svg(mols, width=300, height=150):
     n_mols = len(mols)
     mols_per_row = min(n_mols, 3)
     n_rows = (n_mols + mols_per_row - 1) // mols_per_row
-    
+
     cell_width = width // mols_per_row
     cell_height = 120
-    
+
     drawer = rdMolDraw2D.MolDraw2DSVG(width, cell_height * n_rows, cell_width, cell_height)
     drawer.DrawMolecules(mols)
     drawer.FinishDrawing()
@@ -348,42 +404,71 @@ def health():
 def index():
     """Main page with form and results."""
     if request.method == 'GET':
-        return render_template_string(HTML_TEMPLATE)
-    
+        return render_template_string(HTML_TEMPLATE, results_html='')
+
     smiles = request.form.get('smiles', '').strip()
     n_precursors = request.form.get('n_precursors', 1, type=int)
     diffusion_steps = request.form.get('diffusion_steps', 1, type=int)
-    temperature = request.form.get('temperature', 1.0, type=float)
-    beam_size = request.form.get('beam_size', 10, type=int)
-    
-    if not smiles:
-        return render_template_string(HTML_TEMPLATE, error="Please enter a SMILES string.")
-    
-    target_mol = Chem.MolFromSmiles(smiles)
-    if target_mol is None:
+
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    def _render(error=None, results=None, target_svg=None, target_mw=0):
+        results_html = render_template_string(
+            RESULTS_TEMPLATE,
+            error=error,
+            results=results,
+            smiles=smiles,
+            target_svg=target_svg,
+            target_mw=target_mw,
+        )
+        if is_ajax:
+            return results_html
         return render_template_string(
             HTML_TEMPLATE,
             smiles=smiles,
             n_precursors=n_precursors,
             diffusion_steps=diffusion_steps,
-            temperature=temperature,
-            beam_size=beam_size,
-            error=f"Invalid SMILES string: '{escape(smiles)}'"
+            results_html=results_html,
         )
-    
+
+    if not smiles:
+        return _render(error="Please enter a SMILES string.")
+
+    # Range validation
+    if not (1 <= n_precursors <= 20):
+        return _render(error="Number of precursors must be between 1 and 20.")
+
+    if not (1 <= diffusion_steps <= 500):
+        return _render(error="Diffusion steps must be between 1 and 500.")
+
+    # Validate diffusion_steps divides 500
+    T = 500
+    if T % diffusion_steps != 0:
+        valid = [d for d in range(1, T + 1) if T % d == 0]
+        return _render(
+            error=f"Diffusion steps must evenly divide {T}. Valid values: {valid}"
+        )
+
+    target_mol = Chem.MolFromSmiles(smiles)
+    if target_mol is None:
+        return _render(
+            error=(
+                f"Invalid SMILES string: '{escape(smiles)}'. "
+                "Please check for mismatched parentheses, invalid atom symbols, or incorrect bond notation."
+            )
+        )
+
     predictions = predict.predict_precursors(
-        smiles, 
+        smiles,
         n_precursors=n_precursors,
         diffusion_steps=diffusion_steps,
-        temperature=temperature,
-        beam_size=beam_size
     )
-    
+
     results = []
     for pred in predictions:
         precursor_mols = [Chem.MolFromSmiles(s) for s in pred['precursors'].split('.')]
         precursor_mols = [m for m in precursor_mols if m is not None]
-        
+
         if precursor_mols:
             svg = mols_to_svg(precursor_mols)
             results.append({
@@ -391,17 +476,16 @@ def index():
                 'score': pred['score'],
                 'svg': svg
             })
-    
-    return render_template_string(
-        HTML_TEMPLATE,
-        smiles=smiles,
-        n_precursors=n_precursors,
-        diffusion_steps=diffusion_steps,
-        temperature=temperature,
-        beam_size=beam_size,
+
+    if not results:
+        return _render(
+            error="No valid precursors found for this molecule. Try increasing the number of precursors or diffusion steps."
+        )
+
+    return _render(
+        results=results,
         target_svg=mol_to_svg(target_mol, 150, 150),
         target_mw=Descriptors.MolWt(target_mol),
-        results=results
     )
 
 
@@ -410,22 +494,20 @@ def api_predict():
     """API endpoint for predictions."""
     data = request.get_json() or {}
     smiles = data.get('smiles', '').strip()
-    
+
     if not smiles:
         return jsonify({'error': 'No SMILES provided'}), 400
-    
+
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return jsonify({'error': f'Invalid SMILES: {smiles}'}), 400
-    
+
     predictions = predict.predict_precursors(
         smiles,
         n_precursors=data.get('n_precursors', 1),
         diffusion_steps=data.get('diffusion_steps', 1),
-        temperature=data.get('temperature', 1.0),
-        beam_size=data.get('beam_size', 10)
     )
-    
+
     return jsonify({'target': smiles, 'predictions': predictions})
 
 
