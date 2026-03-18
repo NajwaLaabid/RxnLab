@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 # Install system dependencies required by RDKit's Cairo/X11 rendering backend
 # These are the libraries that were missing in your original deployment:
@@ -32,6 +32,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY wsgi.py .
 COPY DiffAlign ./DiffAlign
+COPY evaluation ./evaluation
 RUN pip install --no-cache-dir -e ./DiffAlign 
 
 # OpenShift runs as arbitrary UID but in root group (GID 0)

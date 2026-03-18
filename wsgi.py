@@ -23,6 +23,8 @@ sys.path.insert(0, str(app_dir))
 sys.path.insert(0, str(app_dir / 'DiffAlign'))
 
 from DiffAlign.api import predict
+from evaluation import classify_reactions
+from evaluation.pubchem_lookup import lookup_all_compounds
 
 # testing
 application = flask.Flask(__name__)
@@ -59,8 +61,15 @@ RESULTS_TEMPLATE = """
                 <span class="precursor-rank">#{{ loop.index }}</span>
                 <span class="precursor-score">Score: {{ "%.3f"|format(result.score) }}</span>
             </div>
+            {% if result.reaction_info and result.reaction_info.success %}
+            <div class="reaction-class-badge" title="Reaction class: {{ result.reaction_info.class or 'Unknown' }}">
+                {{ result.reaction_info.name or result.reaction_info.class or 'Unclassified' }}
+            </div>
+            {% endif %}
             <div class="mol-svg">{{ result.svg | safe }}</div>
             <div class="precursor-smiles">{{ result.precursors }}</div>
+            <button class="btn-lookup" onclick="lookupCompounds(this, '{{ result.precursors }}')">Search PubChem</button>
+            <div class="compound-info" style="display:none;"></div>
         </div>
         {% endfor %}
     </div>
@@ -218,6 +227,53 @@ HTML_TEMPLATE = """
             border-radius: 8px;
             border-left: 4px solid #c0392b;
         }
+        .reaction-class-badge {
+            display: inline-block;
+            background: #e8eaf6;
+            color: #3949ab;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .btn-lookup {
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid #4a6fa5;
+            border-radius: 6px;
+            background: white;
+            color: #4a6fa5;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+        .btn-lookup:hover { background: #4a6fa5; color: white; }
+        .btn-lookup:disabled { opacity: 0.6; cursor: not-allowed; }
+        .compound-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .compound-info .compound-entry { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #e9ecef; }
+        .compound-info .compound-entry:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .compound-info .compound-name { font-weight: 600; color: #333; }
+        .compound-info .compound-detail { color: #666; }
+        .fame-score {
+            display: inline-block;
+            background: #fff3e0;
+            color: #e65100;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -275,6 +331,54 @@ HTML_TEMPLATE = """
         }
         function clearForm() {
             document.getElementById('smiles-input').value = '';
+        }
+        function lookupCompounds(btn, precursors) {
+            var panel = btn.nextElementSibling;
+            if (panel.style.display !== 'none') {
+                panel.style.display = 'none';
+                btn.textContent = 'Search PubChem';
+                return;
+            }
+            btn.disabled = true;
+            btn.textContent = 'Searching PubChem...';
+            panel.style.display = 'block';
+            panel.innerHTML = '<em>Looking up compounds...</em>';
+            var smilesList = precursors.split('.');
+            fetch('/api/evaluate/compound-lookup', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({smiles_list: smilesList})
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                btn.disabled = false;
+                btn.textContent = 'Hide PubChem Info';
+                if (data.error) {
+                    panel.innerHTML = '<span style="color:#c0392b;">' + data.error + '</span>';
+                    return;
+                }
+                var html = '';
+                data.compounds.forEach(function(c) {
+                    html += '<div class="compound-entry">';
+                    if (c.found) {
+                        var name = (c.short_names && c.short_names.length > 0) ? c.short_names[0] : (c.iupac || c.smiles);
+                        var aka = (c.short_names && c.short_names.length > 1) ? ' <span class="compound-detail">aka ' + c.short_names.slice(1, 4).join(', ') + '</span>' : '';
+                        html += '<div class="compound-name">' + name + aka + '</div>';
+                        html += '<div class="compound-detail">' + (c.formula || '') + ' &middot; MW ' + (c.mw || '?') + '</div>';
+                        html += '<div class="compound-detail">Patents: ' + (c.n_patents || 0) + ' &middot; PubMed: ' + (c.n_pubmed || 0) + ' <span class="fame-score">Fame ' + (c.fame_score || 0) + '</span></div>';
+                        html += '<div class="compound-detail"><a href="https://pubchem.ncbi.nlm.nih.gov/compound/' + c.cid + '" target="_blank" style="color:#4a6fa5;">PubChem CID ' + c.cid + '</a></div>';
+                    } else {
+                        html += '<div class="compound-detail">Not found: ' + c.smiles + '</div>';
+                    }
+                    html += '</div>';
+                });
+                panel.innerHTML = html;
+            })
+            .catch(function(err) {
+                btn.disabled = false;
+                btn.textContent = 'Search PubChem';
+                panel.innerHTML = '<span style="color:#c0392b;">Lookup failed: ' + err.message + '</span>';
+            });
         }
 
         (function() {
@@ -482,6 +586,11 @@ def index():
             error="No valid precursors found for this molecule. Try increasing the number of precursors or diffusion steps."
         )
 
+    try:
+        classify_reactions(results, smiles)
+    except Exception:
+        pass  # graceful degradation
+
     return _render(
         results=results,
         target_svg=mol_to_svg(target_mol, 150, 150),
@@ -508,7 +617,29 @@ def api_predict():
         diffusion_steps=data.get('diffusion_steps', 1),
     )
 
+    if data.get('evaluate', True):
+        try:
+            classify_reactions(predictions, smiles)
+        except Exception:
+            pass
+
     return jsonify({'target': smiles, 'predictions': predictions})
+
+
+@application.route('/api/evaluate/compound-lookup', methods=['POST'])
+def api_compound_lookup():
+    """PubChem compound lookup endpoint."""
+    data = request.get_json() or {}
+    smiles_list = data.get('smiles_list', [])
+
+    if not smiles_list:
+        return jsonify({'error': 'No SMILES provided'}), 400
+
+    if len(smiles_list) > 10:
+        return jsonify({'error': 'Maximum 10 compounds per request'}), 400
+
+    compounds = lookup_all_compounds(smiles_list)
+    return jsonify({'compounds': compounds})
 
 
 if __name__ == "__main__":

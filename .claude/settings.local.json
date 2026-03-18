@@ -49,7 +49,16 @@
       "Bash(find /Users/laabidn1 -maxdepth 10 -path \"*/syntheseus/reaction_prediction*\" -name \"*.py\" 2>/dev/null | head -30)",
       "Bash(find /Users/laabidn1/multiguide -name \"requirements*.txt\" -o -name \"setup.py\" -o -name \"setup.cfg\" -o -name \"pyproject.toml\" 2>/dev/null | head -5)",
       "Bash(conda env:*)",
-      "Bash(pip show:*)"
+      "Bash(pip show:*)",
+      "Bash(python3 << 'EOF'\nimport json\n# Read the notebook to extract complete function definitions\nwith open\\('/Users/laabidn1/multiguide/notebooks/case_study.ipynb', 'r'\\) as f:\n    nb = json.load\\(f\\)\n\n# Find cells with function definitions\nfor i, cell in enumerate\\(nb['cells']\\):\n    if cell['cell_type'] == 'code':\n        source = ''.join\\(cell['source']\\)\n        if 'get_compound_profile' in source or '_get_patent_count' in source or '_get_pubmed_count' in source or 'lookup_all' in source:\n            print\\(f\"\\\\n=== CELL {i} ===\"\\)\n            print\\(source[:2000]\\)\n            if len\\(source\\) > 2000:\n                print\\(\"... [truncated]\"\\)\nEOF)",
+      "Bash(python3 << 'EOF'\nimport json\nwith open\\('/Users/laabidn1/multiguide/notebooks/case_study.ipynb', 'r'\\) as f:\n    nb = json.load\\(f\\)\n\n# Get the complete cell 3 with all functions\nfor i, cell in enumerate\\(nb['cells']\\):\n    if cell['cell_type'] == 'code' and i == 3:\n        source = ''.join\\(cell['source']\\)\n        print\\(source\\)\n        break\nEOF)",
+      "Bash(python3 -c \"from syntheseus.reaction_prediction.inference import RootAlignedModel; import inspect; print\\(inspect.getfile\\(RootAlignedModel\\)\\)\" 2>/dev/null)",
+      "Bash(python3 -c \"import syntheseus.reaction_prediction.inference.root_aligned as ra; import inspect; print\\(inspect.getfile\\(ra\\)\\)\" 2>/dev/null)",
+      "Bash(python3 << 'EOF'\n# Check what syntheseus provides out of the box\nfrom syntheseus.reaction_prediction.inference import RootAlignedModel\nimport inspect\n\n# Get the source file\nsource_file = inspect.getfile\\(RootAlignedModel\\)\nprint\\(f\"RootAlignedModel source: {source_file}\"\\)\n\n# Get method signatures\nprint\\(f\"\\\\nRootAlignedModel.__init__ signature:\"\\)\nprint\\(inspect.signature\\(RootAlignedModel.__init__\\)\\)\n\nprint\\(f\"\\\\nRootAlignedModel._get_reactions signature:\"\\)\nprint\\(inspect.signature\\(RootAlignedModel._get_reactions\\)\\)\nEOF)",
+      "Bash(python3 -c \"from syntheseus import Molecule; help\\(Molecule.__init__\\)\" 2>&1 | head -30)",
+      "Bash(cd /Users/laabidn1/multiguide && python -c \"\nimport json\nwith open\\('notebooks/case_study.ipynb'\\) as f:\n    nb = json.load\\(f\\)\nfor i, cell in enumerate\\(nb['cells']\\):\n    src = ''.join\\(cell['source']\\)\n    if 'get_compound_profile' in src or 'lookup_all' in src or '_get_patent_count' in src:\n        print\\(f'=== Cell {i} \\({cell[\\\\\"cell_type\\\\\"]}\\) ==='\\)\n        print\\(src\\)\n        print\\(\\)\n\")",
+      "Bash(conda create:*)",
+      "Bash(curl -s \"https://data.pyg.org/whl/torch-2.6.0+cpu.html\" 2>/dev/null | grep -o 'torch_scatter[^\"]*cp310[^\"]*' | head -3 && echo \"---\" && curl -s \"https://data.pyg.org/whl/torch-2.6.0+cpu.html\" 2>/dev/null | grep -o 'torch_sparse[^\"]*cp310[^\"]*' | head -3)"
     ]
   }
 }

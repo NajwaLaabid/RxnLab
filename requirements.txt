@@ -13,6 +13,8 @@ pillow
 # Chemistry
 rdkit
 multiset
+rxn-insight
+pubchempy
 
 # Config & logging
 omegaconf
@@ -39,10 +41,10 @@ tqdm
 
 # CPU-only torch
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.4.0+cpu
+torch==2.6.0+cpu
 
 # PyG packages — must match torch version + cpu
---find-links https://data.pyg.org/whl/torch-2.4.0+cpu.html
+--find-links https://data.pyg.org/whl/torch-2.6.0+cpu.html
 torch-geometric==2.6.1
 torch-scatter==2.1.2
 torch-sparse==0.6.18
