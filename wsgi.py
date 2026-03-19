@@ -87,16 +87,28 @@ HTML_TEMPLATE = """
         * { box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 1000px;
-            margin: 50px auto;
+            max-width: 1100px;
+            margin: 0 auto;
             padding: 20px;
-            background: #f0f2f5;
+            background: #ffffff;
+            min-height: 100vh;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4a6fa5, #5a8fd5);
+            z-index: 1000;
         }
         .container {
-            background: white;
             padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 15px; }
         }
         h1 { color: #1a1a2e; margin-bottom: 8px; }
         .subtitle { color: #666; margin-bottom: 25px; }
@@ -173,6 +185,9 @@ HTML_TEMPLATE = """
             border: 1px solid #ddd;
             border-radius: 6px;
             background: white;
+            max-width: 150px;
+            height: auto;
+            flex-shrink: 0;
         }
         .target-info h3 { margin: 0 0 5px 0; color: #333; }
         .target-info .smiles {
@@ -194,7 +209,8 @@ HTML_TEMPLATE = """
             transition: box-shadow 0.2s;
         }
         .precursor-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .precursor-card .mol-svg { width: 100%; border-radius: 4px; background: #fafafa; }
+        .precursor-card .mol-svg { width: 100%; border-radius: 4px; background: #fafafa; overflow: hidden; }
+        .mol-svg svg { display: block; width: 100%; height: auto; max-width: 100%; }
         .precursor-header {
             display: flex;
             justify-content: space-between;
@@ -215,6 +231,9 @@ HTML_TEMPLATE = """
             font-size: 11px;
             color: #888;
             word-break: break-all;
+            overflow-wrap: anywhere;
+            max-height: 60px;
+            overflow-y: auto;
             margin-top: 10px;
             padding: 8px;
             background: #f8f9fa;
@@ -274,12 +293,47 @@ HTML_TEMPLATE = """
             font-size: 11px;
             font-weight: 600;
         }
+        .info-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background: #edf2f7;
+            border-left: 4px solid #4a6fa5;
+            padding: 14px 18px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            font-size: 14px;
+            color: #333;
+            line-height: 1.5;
+        }
+        .info-banner-content { flex: 1; }
+        .info-banner-content a { color: #4a6fa5; text-decoration: underline; }
+        .info-banner-dismiss {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #888;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+        .info-banner-dismiss:hover { color: #333; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>DiffAlign: Retrosynthesis through Diffusion</h1>
         <p class="subtitle">Enter your target molecule below</p>
+
+        <div class="info-banner" id="info-banner">
+            <div class="info-banner-content">
+                <strong>Demo notice:</strong> This app runs DiffAlign on CPU only.
+                Expect ~1 min per prediction for small molecules (10–20 atoms) with 50 diffusion steps.
+                For full-scale inference, see the
+                <a href="https://github.com/Aalto-QuML/DiffAlign" target="_blank" rel="noopener">DiffAlign repository</a>.
+            </div>
+            <button class="info-banner-dismiss" onclick="dismissBanner()" title="Dismiss">&times;</button>
+        </div>
 
         <form method="post" action="/" id="predict-form">
             <div class="form-group">
@@ -302,8 +356,8 @@ HTML_TEMPLATE = """
                 </div>
                 <div class="param-box">
                     <label>Diffusion Steps</label>
-                    <input type="number" name="diffusion_steps" value="{{ diffusion_steps or 1 }}" min="1" max="500" step="1">
-                    <div class="param-hint">Must divide 500 (e.g. 1, 2, 5, 10, 50, 100, 500)</div>
+                    <input type="number" name="diffusion_steps" value="{{ diffusion_steps or 1 }}" min="1" max="50" step="1">
+                    <div class="param-hint">Must divide 50 (e.g. 1, 2, 5, 10, 25, 50)</div>
                 </div>
             </div>
 
@@ -326,6 +380,19 @@ HTML_TEMPLATE = """
     </div>
 
     <script>
+        function dismissBanner() {
+            var banner = document.getElementById('info-banner');
+            if (banner) banner.style.display = 'none';
+            try { localStorage.setItem('infoBannerDismissed', '1'); } catch(e) {}
+        }
+        (function() {
+            try {
+                if (localStorage.getItem('infoBannerDismissed') === '1') {
+                    var b = document.getElementById('info-banner');
+                    if (b) b.style.display = 'none';
+                }
+            } catch(e) {}
+        })();
         function setSmiles(smiles) {
             document.getElementById('smiles-input').value = smiles;
         }
@@ -542,11 +609,11 @@ def index():
     if not (1 <= n_precursors <= 20):
         return _render(error="Number of precursors must be between 1 and 20.")
 
-    if not (1 <= diffusion_steps <= 500):
-        return _render(error="Diffusion steps must be between 1 and 500.")
+    if not (1 <= diffusion_steps <= 50):
+        return _render(error="Diffusion steps must be between 1 and 50.")
 
-    # Validate diffusion_steps divides 500
-    T = 500
+    # Validate diffusion_steps divides 50
+    T = 50
     if T % diffusion_steps != 0:
         valid = [d for d in range(1, T + 1) if T % d == 0]
         return _render(
