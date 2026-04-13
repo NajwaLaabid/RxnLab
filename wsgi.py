@@ -473,7 +473,7 @@ HTML_TEMPLATE = """
             <div class="params-grid">
                 <div class="param-box">
                     <label>Number of Precursors</label>
-                    <input type="number" name="n_precursors" value="{{ n_precursors or 1 }}" min="1" max="20">
+                    <input type="number" name="n_precursors" value="{{ n_precursors or 1 }}" min="1" max="100">
                 </div>
                 <div class="param-box">
                     <label>Diffusion Steps</label>
@@ -1290,8 +1290,8 @@ def index():
         return _render(error="Please enter a SMILES string.")
 
     # Range validation
-    if not (1 <= n_precursors <= 20):
-        return _render(error="Number of precursors must be between 1 and 20.")
+    if not (1 <= n_precursors <= 100):
+        return _render(error="Number of precursors must be between 1 and 100.")
 
     if not (1 <= diffusion_steps <= 50):
         return _render(error="Diffusion steps must be between 1 and 50.")
@@ -1400,8 +1400,8 @@ def api_inpaint():
     # Validate
     if not isinstance(selected_node_indices, list):
         return jsonify({'error': 'selected_node_indices must be a list'}), 400
-    if not (1 <= n_precursors <= 20):
-        return jsonify({'error': 'n_precursors must be between 1 and 20'}), 400
+    if not (1 <= n_precursors <= 100):
+        return jsonify({'error': 'n_precursors must be between 1 and 100'}), 400
 
     try:
         results = predict.predict_with_inpainting(
