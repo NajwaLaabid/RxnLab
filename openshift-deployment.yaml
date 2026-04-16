@@ -25,7 +25,7 @@ spec:
   source:
     type: Git
     git:
-      uri: https://github.com/najwalb/retrosynthesis-lab.git
+      uri: https://github.com/NajwaLaabid/RetroLab.git
       ref: main
   strategy:
     type: Docker
@@ -122,7 +122,7 @@ spec:
   type: ClusterIP
 
 ---
-# Route - exposes the service to the internet
+# Route - exposes the service to the internet via custom domain
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -138,7 +138,10 @@ spec:
     kind: Service
     name: rdkit-retro
     weight: 100
-  # Uncomment for HTTPS (recommended)
+  # Custom domain config - requires CSC permission for custom hosts
+  # host: rxnlab.org
   # tls:
   #   termination: edge
   #   insecureEdgeTerminationPolicy: Redirect
+  #   certificate: <Cloudflare Origin Certificate>
+  #   key: <Cloudflare Private Key>
