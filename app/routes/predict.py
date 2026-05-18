@@ -64,7 +64,11 @@ def _log_run(*, product_smiles: str, target_mol, params: dict,
 @bp.route('/diffalign', methods=['GET', 'POST'])
 def diffalign():
     if request.method == 'GET':
-        return render_template('predict.html', results_html='')
+        return render_template(
+            'predict.html',
+            results_html='',
+            ux_feedback_form_url=current_app.config.get('UX_FEEDBACK_FORM_URL', ''),
+        )
 
     smiles = request.form.get('smiles', '').strip()
     n_precursors = request.form.get('n_precursors', 1, type=int)
@@ -92,6 +96,7 @@ def diffalign():
             n_precursors=n_precursors,
             diffusion_steps=diffusion_steps,
             results_html=results_html,
+            ux_feedback_form_url=current_app.config.get('UX_FEEDBACK_FORM_URL', ''),
         )
 
     if not smiles:

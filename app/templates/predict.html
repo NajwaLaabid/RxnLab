@@ -260,6 +260,19 @@
             line-height: 1;
         }
         .info-banner-dismiss:hover { color: #333; }
+        .title-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 8px; }
+        .title-row h1 { margin: 0; }
+        .beta-pill {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            background: #fff8f0;
+            color: #b8651a;
+            border: 1px solid #e67e22;
+        }
 
         /* ── Inpainting styles ── */
         .inpaint-mode .precursor-card { border-color: #e67e22; }
@@ -436,18 +449,22 @@
         <a href="/" class="back-link" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#666;text-decoration:none;margin-bottom:18px;">
             <span style="font-size:15px;line-height:1;">←</span> RxnLab
         </a>
-        <h1>DiffAlign: Retrosynthesis through Diffusion</h1>
+        <div class="title-row">
+            <h1>DiffAlign: Retrosynthesis through Diffusion</h1>
+            <span class="beta-pill">Beta</span>
+        </div>
         <p class="subtitle">Enter your target molecule below</p>
 
+        {% if ux_feedback_form_url %}
         <div class="info-banner" id="info-banner">
             <div class="info-banner-content">
-                <strong>Demo notice:</strong> This app runs DiffAlign on CPU only.
-                Expect ~1 min per prediction for small molecules (10-20 atoms) with 50 diffusion steps.
-                For full-scale inference, see the
-                <a href="https://github.com/Aalto-QuML/DiffAlign" target="_blank" rel="noopener">DiffAlign repository</a>.
+                Help shape RxnLab —
+                <a href="{{ ux_feedback_form_url }}" target="_blank" rel="noopener">share your feedback</a>
+                (2 min, anonymous).
             </div>
-            <button class="info-banner-dismiss" onclick="dismissBanner()" title="Dismiss">&times;</button>
+            <button class="info-banner-dismiss" onclick="dismissBanner('info-banner')" title="Dismiss">&times;</button>
         </div>
+        {% endif %}
 
         <form method="post" action="/diffalign" id="predict-form">
             <div class="form-group">
@@ -511,14 +528,20 @@
     });
 
     /* ── Utility functions ── */
-    function dismissBanner() {
-        var banner = document.getElementById('info-banner');
+    function dismissBanner(bannerId) {
+        bannerId = bannerId || 'info-banner';
+        var banner = document.getElementById(bannerId);
         if (banner) banner.style.display = 'none';
-        try { localStorage.setItem('infoBannerDismissed', '1'); } catch(e) {}
+        try { localStorage.setItem('bannerDismissed:' + bannerId, '1'); } catch(e) {}
     }
     (function() {
         try {
+            // Migrate legacy key for backward compat.
             if (localStorage.getItem('infoBannerDismissed') === '1') {
+                localStorage.setItem('bannerDismissed:info-banner', '1');
+                localStorage.removeItem('infoBannerDismissed');
+            }
+            if (localStorage.getItem('bannerDismissed:info-banner') === '1') {
                 var b = document.getElementById('info-banner');
                 if (b) b.style.display = 'none';
             }

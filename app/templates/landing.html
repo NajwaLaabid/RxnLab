@@ -55,6 +55,19 @@
             letter-spacing: -0.01em;
         }
         .wordmark .dot { color: var(--accent); }
+        .brand { display: flex; align-items: center; gap: 10px; }
+        .beta-pill {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #fff8f0;
+            color: #b8651a;
+            border: 1px solid #e67e22;
+            line-height: 1.4;
+        }
         .nav { display: flex; align-items: center; gap: 22px; font-size: 14px; }
         .nav a { color: var(--ink-soft); }
         .nav a:hover { color: var(--ink); text-decoration: none; }
@@ -249,7 +262,10 @@
 <body>
     <div class="wrap">
         <header class="topbar">
-            <a href="/" class="wordmark">Rxn<span class="dot">·</span>Lab</a>
+            <div class="brand">
+                <a href="/" class="wordmark">Rxn<span class="dot">·</span>Lab</a>
+                <span class="beta-pill">Beta</span>
+            </div>
             <nav class="nav">
                 <a href="/diffalign">DiffAlign</a>
                 <a href="#projects" class="soon" title="Coming soon">SCR</a>
