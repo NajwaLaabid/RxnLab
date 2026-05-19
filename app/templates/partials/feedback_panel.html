@@ -4,12 +4,24 @@
      data-run-id="{{ run_id or '' }}"
      data-prediction-index="{{ prediction_index }}">
 
+    <div class="fb-section-title">
+        <span class="fb-section-title-text">Chemical assessment</span>
+        <span class="info-tip" tabindex="0" role="button" aria-label="About this section">
+            <span class="info-tip-icon">?</span>
+            <span class="info-tip-body" role="tooltip">Your feedback on this prediction is stored anonymously on the server (no identifying information) and used to improve the models and the platform.</span>
+        </span>
+    </div>
+
     {% if not run_id %}
     <div class="fb-banner">Feedback collection is disabled — server needs <code>DATABASE_URL</code> set.</div>
     {% endif %}
 
     <label class="fb-rate-inline">
         <span class="fb-rate-name">Plausibility</span>
+        <span class="info-tip" tabindex="0" role="button" aria-label="About plausibility">
+            <span class="info-tip-icon">?</span>
+            <span class="info-tip-body" role="tooltip">Your own qualitative judgment of how feasible this reaction looks. 1 = implausible, 5 = plausible.</span>
+        </span>
         <input type="range" min="1" max="5" step="1" value="3" class="fb-rate-slider"
                {% if not run_id %}disabled{% endif %}>
         <span class="fb-rate-value">3</span>
@@ -19,7 +31,7 @@
 
     <div class="fb-row">
         <details class="fb-tag">
-            <summary class="fb-summary">Tag the disconnection<span class="fb-summary-tick" data-summary-tick></span></summary>
+            <summary class="fb-summary">How does this look chemically?<span class="fb-summary-tick" data-summary-tick></span></summary>
             <div class="fb-tag-body">
                 <label class="fb-tag-positive"><input type="checkbox" value="looks-correct"> Looks correct</label>
                 <hr class="fb-tag-divider">
@@ -45,7 +57,7 @@
             <summary class="fb-summary">💬 Comment<span class="fb-summary-tick" data-summary-tick></span></summary>
             <div class="fb-comment-body">
                 <textarea class="fb-text" rows="3" maxlength="5000"
-                          placeholder="Free-text comment (optional, max 5000 chars)"
+                          placeholder="Any additional comments about this prediction? (optional, max 5000 chars)"
                           {% if not run_id %}disabled{% endif %}></textarea>
                 <div class="fb-footer">
                     <button type="button" class="fb-btn fb-comment-submit"

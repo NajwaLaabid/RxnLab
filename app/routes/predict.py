@@ -9,6 +9,7 @@ from markupsafe import escape
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 from rdkit.Chem.inchi import MolToInchiKey
+from rdkit.Chem.rdMolDescriptors import CalcMolFormula
 
 from DiffAlign.api import predict
 
@@ -77,7 +78,7 @@ def diffalign():
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     def _render(error=None, results=None, target_svg=None, target_mw=0,
-                results_json='[]', run_id=None):
+                target_formula='', results_json='[]', run_id=None):
         results_html = render_template(
             'partials/results.html',
             error=error,
@@ -86,6 +87,7 @@ def diffalign():
             smiles=smiles,
             target_svg=target_svg,
             target_mw=target_mw,
+            target_formula=target_formula,
             run_id=str(run_id) if run_id else '',
         )
         if is_ajax:
@@ -139,10 +141,12 @@ def diffalign():
 
         if precursor_mols:
             svg = mols_to_svg(precursor_mols)
+            formula = ', '.join(CalcMolFormula(m) for m in precursor_mols)
             results.append({
                 'precursors': pred['precursors'],
                 'score': pred['score'],
                 'svg': svg,
+                'formula': formula,
                 'sample_data': pred.get('sample_data'),
                 'atom_mapping': pred.get('atom_mapping'),
             })
@@ -169,6 +173,7 @@ def diffalign():
         results=results,
         target_svg=mol_to_svg(target_mol, 150, 150),
         target_mw=Descriptors.MolWt(target_mol),
+        target_formula=CalcMolFormula(target_mol),
         results_json=serialize_results_json(results),
         run_id=run_id,
     )
@@ -294,6 +299,7 @@ def api_inpaint():
         precursor_mols = [Chem.MolFromSmiles(s) for s in r['precursors'].split('.')]
         precursor_mols = [m for m in precursor_mols if m is not None]
         r['svg'] = mols_to_svg(precursor_mols) if precursor_mols else ''
+        r['formula'] = ', '.join(CalcMolFormula(m) for m in precursor_mols) if precursor_mols else ''
 
     return jsonify({
         'target_smiles': product_smiles,

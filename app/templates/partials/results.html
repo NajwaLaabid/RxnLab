@@ -14,6 +14,11 @@
         <div class="target-info">
             <h3>Target</h3>
             <div class="smiles">{{ smiles }}</div>
+            {% if target_formula %}
+            <div style="margin-top: 4px; font-size: 13px; color: #333;">
+                Formula: <strong>{{ target_formula }}</strong>
+            </div>
+            {% endif %}
             <div style="margin-top: 8px; font-size: 13px; color: #666;">
                 MW: {{ "%.1f"|format(target_mw) }} ·
                 Generated {{ results|length }} precursor set(s)
@@ -21,7 +26,16 @@
         </div>
     </div>
 
-    <h3 style="margin-bottom: 15px;">Predicted Precursor Sets</h3>
+    <h3 style="margin-bottom: 15px; display: inline-flex; align-items: center;">
+        Predicted Precursor Sets
+        <span class="info-tip" tabindex="0" role="button" aria-label="About rank and score">
+            <span class="info-tip-icon">?</span>
+            <span class="info-tip-body" role="tooltip">
+                <strong>Rank #N</strong>: predictions are ordered by score; #1 is the precursor set the model generated most often.<br><br>
+                <strong>Score</strong>: how often the model produced exactly these precursors across multiple sampling attempts. Higher = more consistent (e.g. 0.40 = 40% of samples).
+            </span>
+        </span>
+    </h3>
     <div class="precursors-grid">
         {% for result in results %}
         <div class="precursor-card" data-result-index="{{ loop.index0 }}">
@@ -30,15 +44,30 @@
                 <span class="precursor-score">Score: {{ "%.3f"|format(result.score) }}</span>
             </div>
             {% if result.reaction_info and result.reaction_info.success %}
-            <div class="reaction-class-badge" title="Reaction class: {{ result.reaction_info.class or 'Unknown' }}">
-                {{ result.reaction_info.name or result.reaction_info.class or 'Unclassified' }}
+            <div class="reaction-class-row">
+                <span class="reaction-class-badge" title="Reaction class: {{ result.reaction_info.class or 'Unknown' }}">
+                    {{ result.reaction_info.name or result.reaction_info.class or 'Unclassified' }}
+                </span>
+                <span class="info-tip" tabindex="0" role="button" aria-label="About reaction type">
+                    <span class="info-tip-icon">?</span>
+                    <span class="info-tip-body" role="tooltip">Reaction class assigned by rxn-insight, which uses template-based matching against a curated reaction library.</span>
+                </span>
             </div>
             {% endif %}
             <div class="mol-svg">{{ result.svg | safe }}</div>
             <div class="precursor-smiles">{{ result.precursors }}</div>
+            {% if result.formula %}
+            <div class="precursor-formula">Formula: <strong>{{ result.formula }}</strong></div>
+            {% endif %}
             <div class="precursor-actions">
-                <button class="btn-lookup" onclick="lookupCompounds(this, '{{ result.precursors }}')">Search PubChem</button>
-                <button class="btn-inpaint" onclick="enterInpaintMode(this)">Inpaint</button>
+                <button class="btn-lookup"
+                        title="Queries the PubChem REST API for compound metadata (formula, MW, patents, PubMed mentions). May take a minute for several compounds."
+                        onclick="lookupCompounds(this, '{{ result.precursors }}')">Search PubChem</button>
+                <button class="btn-inpaint" onclick="enterInpaintMode(this)">Edit precursor</button>
+                <span class="info-tip" tabindex="0" role="button" aria-label="About edit precursor">
+                    <span class="info-tip-icon">?</span>
+                    <span class="info-tip-body" role="tooltip">Mark atoms to keep or to change, then ask the model to regenerate this precursor with your selection in mind.</span>
+                </span>
             </div>
             <div class="compound-info" style="display:none;"></div>
             {% with prediction_index = loop.index0 %}

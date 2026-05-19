@@ -191,8 +191,20 @@
             border-radius: 12px;
             font-size: 12px;
             font-weight: 600;
+        }
+        .reaction-class-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
             margin-bottom: 8px;
         }
+        .precursor-formula {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #333;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        .precursor-formula strong { font-weight: 700; }
         .precursor-actions {
             display: flex;
             gap: 8px;
@@ -226,6 +238,20 @@
         .compound-info .compound-entry:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
         .compound-info .compound-name { font-weight: 600; color: #333; }
         .compound-info .compound-detail { color: #666; }
+        .pubchem-loading { font-size: 12px; color: #555; }
+        .pubchem-loading-msg { margin-bottom: 6px; font-style: italic; }
+        .pubchem-progress {
+            background: #e9ecef;
+            border-radius: 6px;
+            overflow: hidden;
+            height: 8px;
+        }
+        .pubchem-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #0a6e6e, #0d8a8a);
+            transition: width 0.2s ease;
+        }
         .fame-score {
             display: inline-block;
             background: #fff3e0;
@@ -487,9 +513,19 @@
                     <input type="number" name="n_precursors" value="{{ n_precursors or 10 }}" min="1" max="100">
                 </div>
                 <div class="param-box">
-                    <label>Diffusion Steps</label>
-                    <input type="number" name="diffusion_steps" value="{{ diffusion_steps or 10 }}" min="1" max="50" step="1">
-                    <div class="param-hint">Must divide 50 (e.g. 1, 2, 5, 10, 25, 50)</div>
+                    <label>
+                        Diffusion Steps
+                        <span class="info-tip" tabindex="0" role="button" aria-label="About diffusion steps">
+                            <span class="info-tip-icon">?</span>
+                            <span class="info-tip-body" role="tooltip">How many denoising steps the model takes to produce each sample. More steps usually mean cleaner, more confident predictions but slower inference.</span>
+                        </span>
+                    </label>
+                    {% set current_steps = diffusion_steps or 10 %}
+                    <select name="diffusion_steps">
+                        {% for d in [1, 2, 5, 10, 25, 50] %}
+                        <option value="{{ d }}" {% if d == current_steps %}selected{% endif %}>{{ d }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
 
@@ -568,8 +604,25 @@
         btn.disabled = true;
         btn.textContent = 'Searching...';
         panel.style.display = 'block';
-        panel.innerHTML = '<em>Looking up compounds...</em>';
         var smilesList = precursors.split('.');
+        // Each compound takes a few seconds (3 sequential PubChem calls each); show a
+        // determinate progress bar driven by elapsed time as a proxy.
+        var nCompounds = smilesList.length;
+        var estPerCompound = 3500;  // ms; rough average per compound
+        var estTotal = nCompounds * estPerCompound;
+        panel.innerHTML =
+            '<div class="pubchem-loading">' +
+                '<div class="pubchem-loading-msg">Fetching PubChem metadata for ' + nCompounds +
+                ' compound' + (nCompounds === 1 ? '' : 's') + ' — this may take a minute…</div>' +
+                '<div class="pubchem-progress"><div class="pubchem-progress-bar"></div></div>' +
+            '</div>';
+        var progressBar = panel.querySelector('.pubchem-progress-bar');
+        var pubchemStart = Date.now();
+        var pubchemTimer = setInterval(function () {
+            var elapsed = Date.now() - pubchemStart;
+            var pct = Math.min(95, (elapsed / estTotal) * 100);
+            if (progressBar) progressBar.style.width = pct + '%';
+        }, 200);
         fetch('/api/evaluate/compound-lookup', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -577,6 +630,8 @@
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
+            clearInterval(pubchemTimer);
+            if (progressBar) progressBar.style.width = '100%';
             btn.disabled = false;
             btn.textContent = 'Hide PubChem';
             if (data.error) {
@@ -601,6 +656,7 @@
             panel.innerHTML = html;
         })
         .catch(function(err) {
+            clearInterval(pubchemTimer);
             btn.disabled = false;
             btn.textContent = 'Search PubChem';
             panel.innerHTML = '<span style="color:#c0392b;">Lookup failed: ' + err.message + '</span>';
@@ -743,7 +799,7 @@
             return;
         }
         if (generations.length >= MAX_GENERATIONS) {
-            alert('Maximum of ' + (MAX_GENERATIONS - 1) + ' inpainting rounds reached. Start a new prediction to continue.');
+            alert('Maximum of ' + (MAX_GENERATIONS - 1) + ' edit rounds reached. Start a new prediction to continue.');
             return;
         }
         var card = btn.closest('.precursor-card');
@@ -810,7 +866,15 @@
                         'Precursors <input type="number" class="inpaint-n-precursors" min="1" max="100" value="10" style="width:50px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;">' +
                     '</label>' +
                     '<label style="font-size:12px;color:#555;display:flex;align-items:center;gap:4px;">' +
-                        'Diff. steps <input type="number" class="inpaint-diff-steps" min="1" max="50" value="10" style="width:50px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;">' +
+                        'Diff. steps ' +
+                        '<select class="inpaint-diff-steps" style="padding:3px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;">' +
+                            '<option value="1">1</option>' +
+                            '<option value="2">2</option>' +
+                            '<option value="5">5</option>' +
+                            '<option value="10" selected>10</option>' +
+                            '<option value="25">25</option>' +
+                            '<option value="50">50</option>' +
+                        '</select>' +
                     '</label>' +
                 '</div>' +
                 '<div class="toolbar-row">' +
@@ -1516,7 +1580,7 @@
         if (!currentInpaint || currentInpaint.selectedAtoms.size === 0) return;
 
         if (generations.length >= MAX_GENERATIONS) {
-            alert('Maximum of ' + (MAX_GENERATIONS - 1) + ' inpainting rounds reached. Start a new prediction to continue.');
+            alert('Maximum of ' + (MAX_GENERATIONS - 1) + ' edit rounds reached. Start a new prediction to continue.');
             return;
         }
 
@@ -1626,7 +1690,7 @@
             hideProgress();
             submitBtn.disabled = false;
             var rc = document.getElementById('results-container');
-            rc.innerHTML += '<div class="results-section"><div class="error">Inpaint request failed: ' + err.message + '</div></div>';
+            rc.innerHTML += '<div class="results-section"><div class="error">Edit-precursor request failed: ' + err.message + '</div></div>';
         });
     }
 
@@ -1680,7 +1744,7 @@
 
         var headerHtml = '<div class="generation-header">' +
             '<span class="generation-badge">Generation ' + (genIdx + 1) + '</span>' +
-            '<span class="generation-info">Inpainted: ' + fixedInfo + '</span>' +
+            '<span class="generation-info">Edited: ' + fixedInfo + '</span>' +
             '</div>';
 
         var bodyHtml = '';
@@ -1705,6 +1769,9 @@
         } else {
             var cardsHtml = '<div class="precursors-grid">';
             results.forEach(function(result, idx) {
+                var formulaHtml = result.formula
+                    ? '<div class="precursor-formula">Formula: <strong>' + escapeHtml(result.formula) + '</strong></div>'
+                    : '';
                 cardsHtml += '<div class="precursor-card" data-result-index="' + idx + '">' +
                     '<div class="precursor-header">' +
                         '<span class="precursor-rank">#' + (idx + 1) + '</span>' +
@@ -1712,9 +1779,16 @@
                     '</div>' +
                     '<div class="mol-svg"></div>' +
                     '<div class="precursor-smiles">' + result.precursors + '</div>' +
+                    formulaHtml +
                     '<div class="precursor-actions">' +
-                        '<button class="btn-lookup" onclick="lookupCompounds(this, &quot;' + result.precursors.replace(/"/g, '&quot;') + '&quot;)">Search PubChem</button>' +
-                        '<button class="btn-inpaint" onclick="enterInpaintMode(this)">Inpaint</button>' +
+                        '<button class="btn-lookup"' +
+                                ' title="Queries the PubChem REST API for compound metadata (formula, MW, patents, PubMed mentions). May take a minute for several compounds."' +
+                                ' onclick="lookupCompounds(this, &quot;' + result.precursors.replace(/"/g, '&quot;') + '&quot;)">Search PubChem</button>' +
+                        '<button class="btn-inpaint" onclick="enterInpaintMode(this)">Edit precursor</button>' +
+                        '<span class="info-tip" tabindex="0" role="button" aria-label="About edit precursor">' +
+                            '<span class="info-tip-icon">?</span>' +
+                            '<span class="info-tip-body" role="tooltip">Mark atoms to keep or to change, then ask the model to regenerate this precursor with your selection in mind.</span>' +
+                        '</span>' +
                     '</div>' +
                     '<div class="compound-info" style="display:none;"></div>' +
                     '</div>';

@@ -1,3 +1,67 @@
+/* ── Reusable (?) info tooltip ──────────────────────────────────────
+   Hover or focus shows the body. Used in the feedback panel and in
+   per-prediction controls on the predict page. */
+.info-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: help;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+.info-tip .info-tip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #d6d6cc;
+    color: #4a4a3f;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    user-select: none;
+}
+
+.info-tip:hover .info-tip-icon,
+.info-tip:focus-visible .info-tip-icon {
+    background: #4a6fa5;
+    color: #fff;
+}
+
+.info-tip .info-tip-body {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%) translateY(2px);
+    width: max-content;
+    max-width: 260px;
+    padding: 8px 10px;
+    background: #2b2b2b;
+    color: #f5f5f0;
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 400;
+    text-align: left;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+    z-index: 100;
+    white-space: normal;
+}
+
+.info-tip:hover .info-tip-body,
+.info-tip:focus-visible .info-tip-body,
+.info-tip:focus-within .info-tip-body {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
 /* Chemist feedback panel — inline per precursor card. */
 .feedback-panel {
     margin-top: 10px;
@@ -28,6 +92,24 @@
     padding: 0 4px;
     border-radius: 3px;
 }
+
+/* ── Section title strip on top of the panel ─────────────────────── */
+.feedback-panel .fb-section-title {
+    display: flex;
+    align-items: center;
+    margin: -2px 0 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e6e6df;
+}
+
+.feedback-panel .fb-section-title-text {
+    font-weight: 700;
+    font-size: 13px;
+    color: #1a1a2e;
+    letter-spacing: 0.01em;
+}
+
+.feedback-panel.fb-disabled .fb-section-title-text { color: #999; }
 
 /* ── Plausibility slider row ──────────────────────────────────────── */
 .feedback-panel .fb-rate-inline {

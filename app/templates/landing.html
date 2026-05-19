@@ -125,8 +125,20 @@
             border-color: var(--border-strong);
         }
         .btn-secondary:hover { background: #fff; color: var(--ink); border-color: var(--ink); text-decoration: none; }
+        .btn-feedback {
+            background: #fff8f0;
+            color: #b8651a;
+            border-color: #e67e22;
+        }
+        .btn-feedback:hover { background: #e67e22; color: #fff; border-color: #e67e22; text-decoration: none; }
         .btn .arrow { transition: transform 0.15s ease; }
         .btn:hover .arrow { transform: translateX(3px); }
+        .cta-hint {
+            margin-top: 10px;
+            font-size: 13px;
+            color: var(--muted);
+            max-width: 640px;
+        }
 
         /* Section divider with label */
         .section { padding: 30px 0 80px; }
@@ -287,7 +299,17 @@
                 <a class="btn btn-secondary" href="https://github.com/NajwaLaabid/RetroLab" target="_blank" rel="noopener">
                     View on GitHub
                 </a>
+                {% if ux_feedback_form_url %}
+                <a class="btn btn-feedback" href="{{ ux_feedback_form_url }}" target="_blank" rel="noopener">
+                    Share feedback
+                </a>
+                {% endif %}
             </div>
+            {% if ux_feedback_form_url %}
+            <p class="cta-hint">
+                Once you've tried the platform, the feedback form takes ~2 minutes — anonymous, focused on the UX of using RxnLab.
+            </p>
+            {% endif %}
         </section>
 
         <footer>
