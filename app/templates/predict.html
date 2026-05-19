@@ -44,7 +44,7 @@
             border: 2px solid #e0e0e0;
             border-radius: 6px;
         }
-        input[type="text"]:focus { border-color: #4a6fa5; outline: none; }
+        input[type="text"]:focus { border-color: #0d8a8a; outline: none; }
         .params-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -72,9 +72,9 @@
             cursor: pointer;
             transition: background 0.2s;
         }
-        .btn-primary { background: #4a6fa5; color: white; }
-        .btn-primary:hover { background: #3d5d8a; }
-        .btn-primary:disabled { background: #a0b4cc; cursor: not-allowed; }
+        .btn-primary { background: #0d8a8a; color: white; }
+        .btn-primary:hover { background: #0a6e6e; }
+        .btn-primary:disabled { background: #7ab8b8; cursor: not-allowed; }
         .btn-secondary { background: #e9ecef; color: #495057; }
         .btn-secondary:hover { background: #dee2e6; }
         .examples { margin-top: 12px; font-size: 13px; color: #666; }
@@ -138,7 +138,7 @@
             align-items: center;
             margin-bottom: 10px;
         }
-        .precursor-rank { font-weight: 700; color: #4a6fa5; }
+        .precursor-rank { font-weight: 700; color: #0d8a8a; }
         .precursor-score {
             background: #e8f4e8;
             color: #2d6a2d;
@@ -203,14 +203,14 @@
             padding: 8px;
             font-size: 13px;
             font-weight: 600;
-            border: 1px solid #4a6fa5;
+            border: 1px solid #0d8a8a;
             border-radius: 6px;
             background: white;
-            color: #4a6fa5;
+            color: #0d8a8a;
             cursor: pointer;
             transition: background 0.2s, color 0.2s;
         }
-        .btn-lookup:hover, .btn-inpaint:hover { background: #4a6fa5; color: white; }
+        .btn-lookup:hover, .btn-inpaint:hover { background: #0d8a8a; color: white; }
         .btn-lookup:disabled, .btn-inpaint:disabled { opacity: 0.6; cursor: not-allowed; }
         .btn-inpaint { border-color: #e67e22; color: #e67e22; }
         .btn-inpaint:hover { background: #e67e22; color: white; }
@@ -240,7 +240,7 @@
             align-items: flex-start;
             gap: 12px;
             background: #edf2f7;
-            border-left: 4px solid #4a6fa5;
+            border-left: 4px solid #0d8a8a;
             padding: 14px 18px;
             border-radius: 6px;
             margin-bottom: 25px;
@@ -249,7 +249,7 @@
             line-height: 1.5;
         }
         .info-banner-content { flex: 1; }
-        .info-banner-content a { color: #4a6fa5; text-decoration: underline; }
+        .info-banner-content a { color: #0d8a8a; text-decoration: underline; }
         .info-banner-dismiss {
             background: none;
             border: none;
@@ -408,7 +408,7 @@
             margin-bottom: 12px;
         }
         .generation-badge {
-            background: #4a6fa5;
+            background: #0d8a8a;
             color: white;
             padding: 4px 12px;
             border-radius: 12px;
@@ -422,7 +422,7 @@
         .generation-connector {
             width: 2px;
             height: 20px;
-            background: #4a6fa5;
+            background: #0d8a8a;
             margin: 0 auto 10px;
         }
         .generation-connector-label {
@@ -500,7 +500,7 @@
 
             <div id="progress-container" style="display:none; margin-top:20px;">
                 <div style="background:#e9ecef; border-radius:8px; overflow:hidden; height:28px; position:relative;">
-                    <div id="progress-bar" style="height:100%; width:0%; background:linear-gradient(90deg,#4a6fa5,#5a8fd5); border-radius:8px; transition:width 0.3s ease;"></div>
+                    <div id="progress-bar" style="height:100%; width:0%; background:linear-gradient(90deg,#0a6e6e,#0d8a8a); border-radius:8px; transition:width 0.3s ease;"></div>
                     <span id="progress-text" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:13px; font-weight:600; color:#333;"></span>
                 </div>
             </div>
@@ -592,7 +592,7 @@
                     html += '<div class="compound-name">' + name + aka + '</div>';
                     html += '<div class="compound-detail">' + (c.formula || '') + ' &middot; MW ' + (c.mw || '?') + '</div>';
                     html += '<div class="compound-detail">Patents: ' + (c.n_patents || 0) + ' &middot; PubMed: ' + (c.n_pubmed || 0) + ' <span class="fame-score">Fame ' + (c.fame_score || 0) + '</span></div>';
-                    html += '<div class="compound-detail"><a href="https://pubchem.ncbi.nlm.nih.gov/compound/' + c.cid + '" target="_blank" style="color:#4a6fa5;">PubChem CID ' + c.cid + '</a></div>';
+                    html += '<div class="compound-detail"><a href="https://pubchem.ncbi.nlm.nih.gov/compound/' + c.cid + '" target="_blank" style="color:#0d8a8a;">PubChem CID ' + c.cid + '</a></div>';
                 } else {
                     html += '<div class="compound-detail">Not found: ' + c.smiles + '</div>';
                 }
