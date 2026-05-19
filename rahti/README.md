@@ -1,6 +1,6 @@
 # Rahti infrastructure
 
-Kubernetes/OpenShift manifests for the RxnLab feedback persistence layer on CSC Rahti.
+Kubernetes/OpenShift manifests for the RxnLab feedback persistence layer on CSC Rahti, plus operational notes for deploying the Flask app itself.
 
 | File | Purpose |
 |---|---|
@@ -8,6 +8,28 @@ Kubernetes/OpenShift manifests for the RxnLab feedback persistence layer on CSC 
 | `postgres-backup.yaml` | Daily `pg_dump` → CSC Allas CronJob. References the image built from `backup-image/`. |
 | `backup-image/Dockerfile` | Minimal Alpine + `aws-cli` + `postgresql-client` image used by the backup CronJob. Built into Rahti's internal registry; OpenShift's restricted SCC prevents installing tools at runtime, so they must be baked in. |
 | `setup.sh` | First-time bootstrap: generates the Postgres password, creates both Secrets, applies the YAMLs. |
+
+## Deploying the app
+
+The Flask app is built by BuildConfig `retrosynthesis-lab` from `main` on the GitHub repo. A GitHub webhook auto-triggers a build on every push to `main`, so the normal flow is:
+
+1. `git push origin main`
+2. Watch the build: `oc logs -f bc/retrosynthesis-lab` (or `oc get builds`)
+3. Confirm rollout: `oc rollout status deployment/retrosynthesis-lab`
+4. Smoke-check: `curl -sS https://retrosynthesis-lab-diffalign.2.rahtiapp.fi/`
+
+If the webhook didn't fire, trigger the build manually: `oc start-build retrosynthesis-lab --follow`.
+
+### If the new pod doesn't roll over
+
+The Deployment has an `image.openshift.io/triggers` annotation that should sha-pin the container image and roll out a new pod whenever `retrosynthesis-lab:latest` updates. In practice this hasn't been reliable — sometimes the build completes but the pod stays on the old image. Force the rollout:
+
+```bash
+oc rollout restart deployment/retrosynthesis-lab
+oc rollout status deployment/retrosynthesis-lab
+```
+
+`imagePullPolicy: Always` on the container means the restart pulls the new `:latest` from the internal registry. (Note: `oc set triggers` doesn't apply here — it only works on the deprecated `DeploymentConfig`, not on plain `Deployment`.)
 
 ## First-time setup
 
