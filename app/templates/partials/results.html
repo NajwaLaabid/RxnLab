@@ -13,6 +13,12 @@
         {{ target_svg | safe }}
         <div class="target-info">
             <h3>Target</h3>
+            {% if resolved_from %}
+            <div style="margin-bottom: 6px; font-size: 12px; color: #555;">
+                Resolved <code style="background:#f0f0e8;padding:1px 5px;border-radius:3px;">{{ resolved_from.query }}</code>
+                via {{ (resolved_from.source or 'lookup')|upper }} ({{ resolved_from.kind }}) →
+            </div>
+            {% endif %}
             <div class="smiles">{{ smiles }}</div>
             {% if target_formula %}
             <div style="margin-top: 4px; font-size: 13px; color: #333;">
@@ -44,15 +50,27 @@
                 <span class="precursor-score">Score: {{ "%.3f"|format(result.score) }}</span>
             </div>
             {% if result.reaction_info and result.reaction_info.success %}
+            {% set ri = result.reaction_info %}
+            {% if ri.class or ri.name %}
             <div class="reaction-class-row">
-                <span class="reaction-class-badge" title="Reaction class: {{ result.reaction_info.class or 'Unknown' }}">
-                    {{ result.reaction_info.name or result.reaction_info.class or 'Unclassified' }}
-                </span>
+                {% if ri.class %}
+                <span class="reaction-class-badge reaction-class-broad"
+                      title="Broad reaction class">{{ ri.class }}</span>
+                {% endif %}
+                {% if ri.name and ri.name != ri.class %}
+                <span class="reaction-class-badge reaction-class-name"
+                      title="Specific named reaction">{{ ri.name }}</span>
+                {% endif %}
                 <span class="info-tip" tabindex="0" role="button" aria-label="About reaction type">
                     <span class="info-tip-icon">?</span>
-                    <span class="info-tip-body" role="tooltip">Reaction class assigned by rxn-insight, which uses template-based matching against a curated reaction library.</span>
+                    <span class="info-tip-body" role="tooltip">
+                        Assigned by <strong>rxn-insight</strong> via template matching against a curated library.<br><br>
+                        <strong>Class</strong> = broad category (e.g. <em>Acylation</em>, <em>C-N coupling</em>, <em>Reduction</em>).<br>
+                        <strong>Name</strong> = specific named reaction within that class (e.g. <em>Buchwald Hartwig amination</em>).
+                    </span>
                 </span>
             </div>
+            {% endif %}
             {% endif %}
             <div class="mol-svg">{{ result.svg | safe }}</div>
             <div class="precursor-smiles">{{ result.precursors }}</div>

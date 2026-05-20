@@ -1,14 +1,3 @@
-# Pubchem performance
-- Backend slowness is the only deferred item from the UX-feedback batch.
-  `evaluation/pubchem_lookup.py` is serial + has hard-coded `time.sleep` between
-  every PubChem call. Plan for Pass 2:
-  - Parallelize per-compound lookups with a small ThreadPool
-  - Drop or shrink the `time.sleep` delays (keep just enough for rate-limiting)
-  - Consider collapsing patent + pubmed into one combined call
-  - Add a small in-memory cache keyed by canonical SMILES
-  - Benchmark before/after; respect PubChem rate limits
-- A loading message and a progress bar are already in the UI (added in Pass 1),
-  so this is purely a backend improvement.
 
 
 # Migrating to Modal/CPU only platform
@@ -20,8 +9,34 @@
 
 
 # Done
+## Pubchem performance
+- Backend slowness is the only deferred item from the UX-feedback batch.
+  `evaluation/pubchem_lookup.py` is serial + has hard-coded `time.sleep` between
+  every PubChem call. Plan for Pass 2:
+  - Parallelize per-compound lookups with a small ThreadPool
+  - Drop or shrink the `time.sleep` delays (keep just enough for rate-limiting)
+  - Consider collapsing patent + pubmed into one combined call
+  - Add a small in-memory cache keyed by canonical SMILES
+  - Benchmark before/after; respect PubChem rate limits
+- A loading message and a progress bar are already in the UI (added in Pass 1),
+  so this is purely a backend improvement.
 
-# UX improvements from user feedback [DONE — Pass 1]
+## New small features [DONE]
+- Non-SMILES inputs: `evaluation/pubchem_lookup.py` resolves name/CAS/InChI/InChIKey
+  via PubChem PUG-REST (`resolve_to_smiles`). `app/routes/predict.py` falls back
+  to it when RDKit can't parse the input; the resolved SMILES is shown above the
+  target in `partials/results.html` with a "Resolved <query> via PubChem (kind) →"
+  note. Placeholder + examples on the predict page now mention name/CAS/InChI.
+- Reaction type display: `partials/results.html` now shows both the broad
+  `class` and specific `name` from rxn-insight as separate badges (purple for
+  name, indigo for class), with an expanded `(?)` tooltip explaining the
+  difference. New CSS hooks `.reaction-class-broad` / `.reaction-class-name`.
+- Mobile responsiveness: added viewport meta tag to `predict.html`; expanded
+  the `@media (max-width: 768px)` block to stack the params grid, target
+  display, precursors grid, and button rows; added a 420px breakpoint for the
+  examples row. Tooltip body clamped to `min(220px, 80vw)` so it stays on-screen.
+
+## UX improvements from user feedback [DONE — Pass 1]
 - Landing page: added "Share feedback" button + hint linking to the existing
   Google Form (`app/templates/landing.html`, `app/routes/landing.py`).
 - (?) tooltips added on the predict page next to: score, rank, reaction-type
@@ -47,7 +62,7 @@
   minute…" message + determinate progress bar driven by elapsed time. Backend
   perf fix deferred to its own section (see `# Pubchem performance` above).
 
-# Interface [DONE]
+## Interface [DONE]
 - remove references to scr and retroanalyze as separate platforms for now, the final product will likely include them as features where relevant
 - change the tagline of the platform, and potentially the landing page too:
   - current description: 
@@ -59,7 +74,7 @@
     - the layout is also a bit weird, but I haven't found an aesthetic I like yet, and dont have much background in UX design besides. I need help finding examples of similar platform to understand what standard UX practices exist and choose an aesthetic. Here is an aesthetic that caught my eye: https://startup-exploration-day.lovable.app/
     - landing page should have the name of the platform, a tag line, and a description of what it does (maybe what features are available?)
 
-# Collecting UX/platform feedback (18.05)
+## Collecting UX/platform feedback (18.05)
 - this is separate from the chemical feedback I save in the platform, this is just for me to know how users feel about the UI/UX, how they feel about the features available and how they are presented, how they would use such a platform if available to them, etc
 - Not sure yet which feedback I want to collect specifically so need to brainstorm this too. 
 - Also unsure how to add it to the platform (could maybe add a description explaining it's in beta mode) so its intuitive to use and non-intrusive UI-wise. Simplest idea is a link to a google form embedded in the page.

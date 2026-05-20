@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>DiffAlign: Retrosynthesis through Diffusion</title>
     <script src="https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='feedback.css') }}">
@@ -29,7 +31,32 @@
         }
         @media (max-width: 768px) {
             body { padding: 10px; }
-            .container { padding: 15px; }
+            .container { padding: 12px 6px; }
+            h1 { font-size: 22px; }
+            .subtitle { font-size: 13px; }
+            .params-grid { grid-template-columns: 1fr; gap: 10px; }
+            .btn-row { flex-direction: column; }
+            .btn-row button { width: 100%; }
+            .target-display { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .target-display svg { max-width: 100%; width: 100%; height: auto; }
+            .target-info .smiles { font-size: 12px; }
+            .precursors-grid { grid-template-columns: 1fr; }
+            .precursor-actions { flex-direction: column; }
+            .precursor-actions .btn-lookup,
+            .precursor-actions .btn-inpaint { width: 100%; }
+            .info-banner { flex-direction: column; gap: 8px; padding: 12px 14px; font-size: 13px; }
+            .info-banner-dismiss { align-self: flex-end; }
+            .title-row { row-gap: 4px; }
+            .inpaint-toolbar .toolbar-row { flex-wrap: wrap; }
+            .mode-toggle { width: 100%; }
+            .mode-btn { flex: 1; padding: 8px 6px; font-size: 11px; }
+            .inpaint-focus-panel .mol-svg svg { max-width: 100%; height: auto; }
+            /* Tooltip bodies: keep them on-screen on narrow viewports */
+            .info-tip .info-tip-body { max-width: min(220px, 80vw); }
+        }
+        @media (max-width: 420px) {
+            .examples code { display: inline-block; margin: 2px 2px; }
+            .container { padding: 10px 4px; }
         }
         h1 { color: #1a1a2e; margin-bottom: 8px; }
         .subtitle { color: #666; margin-bottom: 25px; }
@@ -185,17 +212,18 @@
         }
         .reaction-class-badge {
             display: inline-block;
-            background: #e8eaf6;
-            color: #3949ab;
             padding: 3px 10px;
             border-radius: 12px;
             font-size: 12px;
             font-weight: 600;
         }
+        .reaction-class-broad { background: #e8eaf6; color: #3949ab; }
+        .reaction-class-name  { background: #f3e5f5; color: #6a1b9a; }
         .reaction-class-row {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
+            flex-wrap: wrap;
             margin-bottom: 8px;
         }
         .precursor-formula {
@@ -484,7 +512,7 @@
         {% if ux_feedback_form_url %}
         <div class="info-banner" id="info-banner">
             <div class="info-banner-content">
-                Help shape RxnLab —
+                Help shape RxnLab:
                 <a href="{{ ux_feedback_form_url }}" target="_blank" rel="noopener">share your feedback</a>
                 (2 min, anonymous).
             </div>
@@ -494,22 +522,31 @@
 
         <form method="post" action="/diffalign" id="predict-form">
             <div class="form-group">
-                <label>Target Product <span class="label-hint">(SMILES)</span></label>
-                <input type="text" name="smiles" placeholder="Enter SMILES string of target molecule..."
+                <label>
+                    Target Product
+                    <span class="label-hint">(SMILES, name, InChI, InChIKey, or CAS; resolved via PubChem)</span>
+                </label>
+                <input type="text" name="smiles" placeholder="e.g. CC(=O)Oc1ccccc1C(=O)O  ·  aspirin  ·  50-78-2  ·  InChI=..."
                        value="{{ smiles or '' }}" id="smiles-input">
                 <div class="examples">
                     Examples:
                     <code onclick="setSmiles('N#CC1=CC=CN=C1C1=CC=CC(Cl)=N1')">Chloro-bipyridine nitrile</code>
-                    <code onclick="setSmiles('CC(=O)Oc1ccccc1C(=O)O')">Aspirin</code>
-                    <code onclick="setSmiles('CN1C=NC2=C1C(=O)N(C(=O)N2C)C')">Caffeine</code>
-                    <code onclick="setSmiles('CC(C)Cc1ccc(cc1)C(C)C(=O)O')">Ibuprofen</code>
+                    <code onclick="setSmiles('aspirin')">aspirin</code>
+                    <code onclick="setSmiles('caffeine')">caffeine</code>
+                    <code onclick="setSmiles('50-78-2')">CAS 50-78-2</code>
                     <code onclick="setSmiles('CC(=O)Nc1ccc(O)cc1')">Paracetamol</code>
                 </div>
             </div>
 
             <div class="params-grid">
                 <div class="param-box">
-                    <label>Number of Precursors</label>
+                    <label>
+                        Number of Precursors
+                        <span class="info-tip" tabindex="0" role="button" aria-label="About number of precursors">
+                            <span class="info-tip-icon">?</span>
+                            <span class="info-tip-body" role="tooltip">How many precursor sets the model samples. The raw samples are then deduplicated, and any set that can't be parsed by RDKit is discarded, so you'll usually see fewer cards than you requested.</span>
+                        </span>
+                    </label>
                     <input type="number" name="n_precursors" value="{{ n_precursors or 10 }}" min="1" max="100">
                 </div>
                 <div class="param-box">
@@ -613,7 +650,7 @@
         panel.innerHTML =
             '<div class="pubchem-loading">' +
                 '<div class="pubchem-loading-msg">Fetching PubChem metadata for ' + nCompounds +
-                ' compound' + (nCompounds === 1 ? '' : 's') + ' — this may take a minute…</div>' +
+                ' compound' + (nCompounds === 1 ? '' : 's') + '. This may take a minute…</div>' +
                 '<div class="pubchem-progress"><div class="pubchem-progress-bar"></div></div>' +
             '</div>';
         var progressBar = panel.querySelector('.pubchem-progress-bar');
@@ -1645,7 +1682,7 @@
         // regenerate — skip the API call and let the user adjust their
         // selection.
         if (allNodes.size > 0 && nodesToKeep.length >= allNodes.size) {
-            alert("You've marked every atom to keep fixed — nothing to regenerate. "
+            alert("You've marked every atom to keep fixed. Nothing to regenerate. "
                   + "Deselect at least one atom, or switch to 'Select atoms to change' mode.");
             return;
         }

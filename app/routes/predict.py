@@ -19,6 +19,7 @@ from app.models_db import Event, PredictionRun
 from app.rendering.classify import classify_reactions
 from app.rendering.pubchem import lookup_all_compounds
 from app.rendering.svg import mol_to_svg, mols_to_svg, serialize_results_json
+from evaluation.pubchem_lookup import resolve_to_smiles
 
 bp = Blueprint('predict', __name__)
 
@@ -71,7 +72,9 @@ def diffalign():
             ux_feedback_form_url=current_app.config.get('UX_FEEDBACK_FORM_URL', ''),
         )
 
-    smiles = request.form.get('smiles', '').strip()
+    raw_input = request.form.get('smiles', '').strip()
+    smiles = raw_input
+    resolved_from = None  # set when we had to resolve a non-SMILES identifier
     n_precursors = request.form.get('n_precursors', 1, type=int)
     diffusion_steps = request.form.get('diffusion_steps', 1, type=int)
 
@@ -85,6 +88,7 @@ def diffalign():
             results=results,
             results_json=results_json,
             smiles=smiles,
+            resolved_from=resolved_from,
             target_svg=target_svg,
             target_mw=target_mw,
             target_formula=target_formula,
@@ -102,7 +106,7 @@ def diffalign():
         )
 
     if not smiles:
-        return _render(error="Please enter a SMILES string.")
+        return _render(error="Please enter a molecule (SMILES, name, InChI, InChIKey, or CAS).")
 
     if not (1 <= n_precursors <= 100):
         return _render(error="Number of precursors must be between 1 and 100.")
@@ -119,12 +123,23 @@ def diffalign():
 
     target_mol = Chem.MolFromSmiles(smiles)
     if target_mol is None:
-        return _render(
-            error=(
-                f"Invalid SMILES string: '{escape(smiles)}'. "
-                "Please check for mismatched parentheses, invalid atom symbols, or incorrect bond notation."
+        resolved = resolve_to_smiles(raw_input)
+        if resolved.get('smiles'):
+            smiles = resolved['smiles']
+            resolved_from = {
+                'query': raw_input,
+                'kind': resolved.get('kind'),
+                'source': resolved.get('source'),
+            }
+            target_mol = Chem.MolFromSmiles(smiles)
+        if target_mol is None:
+            hint = resolved.get('error') or 'Not found.'
+            return _render(
+                error=(
+                    f"Could not interpret '{escape(raw_input)}' as a SMILES, name, "
+                    f"InChI, InChIKey, or CAS number. {escape(hint)}"
+                )
             )
-        )
 
     t0 = time.monotonic()
     predictions = predict.predict_precursors(
@@ -134,10 +149,16 @@ def diffalign():
     )
     latency_ms = int((time.monotonic() - t0) * 1000)
 
+    product_canon = Chem.MolToSmiles(target_mol)
     results = []
     for pred in predictions:
         precursor_mols = [Chem.MolFromSmiles(s) for s in pred['precursors'].split('.')]
         precursor_mols = [m for m in precursor_mols if m is not None]
+
+        # Drop trivial predictions where the precursor set is just the product.
+        precursor_canon = '.'.join(sorted(Chem.MolToSmiles(m) for m in precursor_mols))
+        if precursor_canon == product_canon:
+            continue
 
         if precursor_mols:
             svg = mols_to_svg(precursor_mols)
@@ -248,7 +269,7 @@ def api_inpaint():
     n_fixed = sum(1 for i in selected_node_indices if 0 <= int(i) < len(node_mask_row) and node_mask_row[int(i)])
     if n_real > 0 and n_fixed >= n_real:
         return jsonify({
-            'error': 'All atoms are marked fixed — nothing to regenerate.',
+            'error': 'All atoms are marked fixed. Nothing to regenerate.',
             'hint':  'Deselect at least one atom before submitting.',
         }), 400
 
