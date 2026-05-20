@@ -69,6 +69,14 @@ class Feedback(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class PubChemCache(Base):
+    __tablename__ = 'pubchem_cache'
+
+    smiles: Mapped[str] = mapped_column(Text, primary_key=True)
+    data: Mapped[Any] = mapped_column(JSONB)
+    cached_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Event(Base):
     __tablename__ = 'events'
 
