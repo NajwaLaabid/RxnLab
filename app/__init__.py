@@ -37,13 +37,30 @@ def create_app() -> flask.Flask:
     from app.routes.health import bp as health_bp
     from app.routes.landing import bp as landing_bp
     from app.routes.predict import bp as predict_bp
+    from app.routes.stats import bp as stats_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(landing_bp)
     app.register_blueprint(predict_bp)
     app.register_blueprint(feedback_bp)
+    app.register_blueprint(stats_bp)
 
     return app
+
+
+# UA substrings that mark a non-human client. Matched case-insensitively;
+# "bot" covers Googlebot/GPTBot/etc., "kube-probe" covers the rahti health probe.
+_BOT_UA_MARKERS = (
+    'bot', 'crawl', 'spider', 'slurp', 'monitor', 'curl', 'wget',
+    'python-requests', 'python-urllib', 'go-http-client', 'httpx',
+    'headless', 'kube-probe', 'uptime', 'scan', 'facebookexternalhit',
+    'embedly', 'preview', 'fetch',
+)
+
+
+def _looks_like_bot(ua: str) -> bool:
+    ua = (ua or '').lower()
+    return any(marker in ua for marker in _BOT_UA_MARKERS)
 
 
 def _register_lifecycle(app: flask.Flask) -> None:
@@ -87,6 +104,31 @@ def _register_lifecycle(app: flask.Flask) -> None:
 
         g.db.commit()
         g.session_id = sid
+
+    @app.before_request
+    def _record_pageview():
+        # Runs after _open_session_and_cookie, so g.session_id is set. Records one
+        # row per HTML page GET; analytics must never break a request, so failures
+        # are swallowed. Bots are tagged (not dropped) so they can be audited.
+        db = getattr(g, 'db', None)
+        if db is None or request.method != 'GET':
+            return
+        path = request.path
+        if (path.startswith('/static') or path.startswith('/api')
+                or path in ('/health', '/favicon.ico')):
+            return
+
+        from app.models_db import PageView
+        ua = request.user_agent.string if request.user_agent else ''
+        try:
+            db.add(PageView(
+                session_id=getattr(g, 'session_id', None),
+                path=path[:300],
+                is_bot=_looks_like_bot(ua),
+            ))
+            db.commit()
+        except Exception:
+            db.rollback()
 
     @app.after_request
     def _set_session_cookie(response):
