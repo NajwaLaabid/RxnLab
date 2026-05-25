@@ -1,2 +1,0 @@
-[    1127ms] [LOG] RDKit.js version: 2025.03.4 @ http://127.0.0.1:8080/:503
-[  106103ms] [ERROR] Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR) @ http://127.0.0.1:8080/api/inpaint:0
