@@ -84,7 +84,7 @@ def _register_lifecycle(app: flask.Flask) -> None:
                 sid = None
 
         now = datetime.now(timezone.utc)
-        ua = (request.user_agent.string or '')[:500] if request.user_agent else None
+        ua = (request.headers.get('User-Agent') or '')[:500] or None
 
         if sid is not None:
             row = g.db.get(SessionRow, sid)
@@ -119,7 +119,9 @@ def _register_lifecycle(app: flask.Flask) -> None:
             return
 
         from app.models_db import PageView
-        ua = request.user_agent.string if request.user_agent else ''
+        # Read the header directly: in Werkzeug 3.x request.user_agent is falsy even
+        # when a UA is present, so `... if request.user_agent` would drop every UA.
+        ua = request.headers.get('User-Agent', '')
         try:
             db.add(PageView(
                 session_id=getattr(g, 'session_id', None),
