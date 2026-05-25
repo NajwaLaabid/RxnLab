@@ -33,5 +33,8 @@ def serialize_results_json(results):
             'score': r['score'],
             'sample_data': r.get('sample_data'),
             'atom_mapping': r.get('atom_mapping'),
+            'mapped_rxn': r.get('mapped_rxn'),
+            'formula': r.get('formula'),
+            'reaction_info': r.get('reaction_info'),
         })
     return json.dumps(safe).replace('</', '<\\/')

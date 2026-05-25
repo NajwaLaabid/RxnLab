@@ -7,6 +7,13 @@
     <script type="application/json" class="generation-results-json">{{ results_json | safe }}</script>
     <div class="results-header">
         <h2>Results</h2>
+        <div class="results-export">
+            <button type="button" class="btn-secondary btn-download-csv"
+                    onclick="downloadPredictionsCSV()">Download CSV</button>
+            <span class="results-export-note">
+                Model suggestions — not verified.
+            </span>
+        </div>
     </div>
 
     <div class="target-display">

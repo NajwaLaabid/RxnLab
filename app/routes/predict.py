@@ -170,6 +170,7 @@ def diffalign():
                 'formula': formula,
                 'sample_data': pred.get('sample_data'),
                 'atom_mapping': pred.get('atom_mapping'),
+                'mapped_rxn': pred.get('mapped_rxn'),
             })
 
     if not results:
