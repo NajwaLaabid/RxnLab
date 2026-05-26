@@ -11,10 +11,10 @@ from rdkit.Chem import Descriptors
 from rdkit.Chem.inchi import MolToInchiKey
 from rdkit.Chem.rdMolDescriptors import CalcMolFormula
 
-from DiffAlign.api import predict
+from DiffAlign.api import predict  # eager model load + DiffAlign-specific inpainting
 
-from app.config import DIFFALIGN_MODEL_ID
 from app.db import db_enabled
+from app.registry import registry
 from app.models_db import Event, PredictionRun
 from app.rendering.classify import classify_reactions
 from app.rendering.pubchem import lookup_all_compounds
@@ -33,7 +33,27 @@ def _strip_svg(predictions: list) -> list:
     return out
 
 
-def _log_run(*, product_smiles: str, target_mol, params: dict,
+# Stored-prediction schema. Route-aware from Phase 0 so multi-step (Phase 3) slots
+# in without migration: the run's product is the tree root, each single-step
+# prediction is a depth-1 node, and `children` holds further backward steps later.
+PREDICTIONS_SCHEMA = 'route-tree-v1'
+
+
+def _to_route_tree(product_smiles: str, predictions: list) -> dict:
+    """Wrap a flat list of single-step predictions as a route tree. Node `i`
+    corresponds to feedback `prediction_index == i`; per-prediction fields are
+    preserved verbatim, with `product`/`children` added for tree-awareness."""
+    return {
+        'schema': PREDICTIONS_SCHEMA,
+        'root': product_smiles,
+        'nodes': [
+            {'product': product_smiles, 'children': [], **p}
+            for p in predictions
+        ],
+    }
+
+
+def _log_run(*, model_id: str, product_smiles: str, target_mol, params: dict,
              predictions: list, latency_ms: int) -> Optional[uuid.UUID]:
     """Persist a prediction_runs row + predict_returned event. No-op if DB is off."""
     if not db_enabled() or g.get('db') is None or g.get('session_id') is None:
@@ -44,11 +64,11 @@ def _log_run(*, product_smiles: str, target_mol, params: dict,
         inchi_key = ''
     run = PredictionRun(
         session_id=g.session_id,
-        model_id=DIFFALIGN_MODEL_ID,
+        model_id=model_id,
         product_smiles=product_smiles,
         product_inchi_key=inchi_key,
         params=params,
-        predictions=_strip_svg(predictions),
+        predictions=_to_route_tree(product_smiles, _strip_svg(predictions)),
         latency_ms=latency_ms,
     )
     g.db.add(run)
@@ -141,8 +161,10 @@ def diffalign():
                 )
             )
 
+    model_id = registry.default_model_id()
     t0 = time.monotonic()
-    predictions = predict.predict_precursors(
+    predictions = registry.predict(
+        model_id,
         smiles,
         n_precursors=n_precursors,
         diffusion_steps=diffusion_steps,
@@ -184,6 +206,7 @@ def diffalign():
         pass
 
     run_id = _log_run(
+        model_id=model_id,
         product_smiles=smiles,
         target_mol=target_mol,
         params={'n_precursors': n_precursors, 'diffusion_steps': diffusion_steps},
@@ -216,9 +239,10 @@ def api_predict():
     n_precursors = data.get('n_precursors', 1)
     diffusion_steps = data.get('diffusion_steps', 1)
 
+    model_id = registry.default_model_id()
     t0 = time.monotonic()
-    predictions = predict.predict_precursors(
-        smiles, n_precursors=n_precursors, diffusion_steps=diffusion_steps,
+    predictions = registry.predict(
+        model_id, smiles, n_precursors=n_precursors, diffusion_steps=diffusion_steps,
     )
     latency_ms = int((time.monotonic() - t0) * 1000)
 
@@ -229,6 +253,7 @@ def api_predict():
             pass
 
     run_id = _log_run(
+        model_id=model_id,
         product_smiles=smiles,
         target_mol=mol,
         params={'n_precursors': n_precursors, 'diffusion_steps': diffusion_steps},
@@ -245,6 +270,11 @@ def api_predict():
 @bp.route('/api/inpaint', methods=['POST'])
 def api_inpaint():
     data = request.get_json() or {}
+
+    model_id = registry.default_model_id()
+    if not registry.supports_inpainting(model_id):
+        return jsonify({'error': f'Model {model_id} does not support inpainting.'}), 400
+
     product_smiles = data.get('product_smiles', '').strip()
     previous_sample_data = data.get('previous_sample_data')
     selected_node_indices = data.get('selected_node_indices', [])

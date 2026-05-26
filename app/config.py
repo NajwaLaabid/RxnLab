@@ -12,6 +12,3 @@ class Config:
         os.environ.get('UX_FEEDBACK_FORM_URL')
         or 'https://docs.google.com/forms/d/e/1FAIpQLSeudYjnKoWLspvSxd9tFjlrfOASsHLH4pBnEgGPeUO0rD2AhA/viewform'
     ).strip()
-
-
-DIFFALIGN_MODEL_ID = 'diffalign-align-absorbing-v1'

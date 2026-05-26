@@ -22,21 +22,25 @@ def init_db(database_url: str) -> None:
 
 
 def _seed_models() -> None:
-    from app.config import DIFFALIGN_MODEL_ID
     from app.models_db import Model
+    from app.registry import registry
 
     assert _SessionLocal is not None
     with _SessionLocal() as session:
-        if session.get(Model, DIFFALIGN_MODEL_ID) is None:
-            session.add(Model(
-                model_id=DIFFALIGN_MODEL_ID,
-                display_name='DiffAlign (align-absorbing)',
-                version='epoch760',
-                description='Graph diffusion model for single-step retrosynthesis.',
-                supports_inpainting=True,
-                metadata_={'arch': 'graph-diffusion', 'training': 'USPTO-50k'},
-                added_at=datetime.now(timezone.utc),
-            ))
+        changed = False
+        for spec in registry.list_specs():
+            if session.get(Model, spec.model_id) is None:
+                session.add(Model(
+                    model_id=spec.model_id,
+                    display_name=spec.display_name,
+                    version=spec.version,
+                    description=spec.description,
+                    supports_inpainting=spec.supports_inpainting,
+                    metadata_={**spec.metadata, 'backend': spec.backend},
+                    added_at=datetime.now(timezone.utc),
+                ))
+                changed = True
+        if changed:
             session.commit()
 
 
