@@ -47,6 +47,13 @@ RUN pip install --no-cache-dir -e ./DiffAlign
 # Make sure the app directory is writable by root group
 RUN chgrp -R 0 /app && chmod -R g=u /app
 
+# OpenShift runs as an arbitrary UID with no home → HOME defaults to "/" (unwritable),
+# which breaks every lib that caches under $HOME: dgl (/.dgl, fatal for LocalRetro),
+# syntheseus' checkpoint cache, matplotlib, gunicorn. Point them all at /app (g=u writable).
+ENV HOME=/app \
+    MPLCONFIGDIR=/app/.config/matplotlib \
+    SYNTHESEUS_CACHE_DIR=/app/.cache/syntheseus
+
 # Use non-privileged port (OpenShift doesn't allow ports < 1024)
 EXPOSE 8080
 
