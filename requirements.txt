@@ -37,8 +37,14 @@ imageio
 # Evaluation metrics (top-level import in setup.py)
 fcd_torch
 
-# Syntheseus retrosynthesis planning framework
-syntheseus
+# Syntheseus retrosynthesis planning framework.
+# [local-retro] adds the LocalRetro second single-step model (syntheseus-local-retro
+# + dgllife; pulls pandas<2.2). dgl has no torch-2.6 build, so dgl is pinned to 1.1.3
+# (predates graphbolt's hard torch-version check; fine for dgllife featurization), and
+# torchdata to <0.10 (dgl 1.1.3 imports torchdata.datapipes, removed in 0.10).
+syntheseus[local-retro]
+dgl==1.1.3
+torchdata==0.9.0
 
 # Misc
 tqdm

@@ -88,11 +88,13 @@
                 <button class="btn-lookup"
                         title="Queries the PubChem REST API for compound metadata (formula, MW, patents, PubMed mentions). May take a minute for several compounds."
                         onclick="lookupCompounds(this, '{{ result.precursors }}')">Search PubChem</button>
+                {% if supports_inpainting %}
                 <button class="btn-inpaint" onclick="enterInpaintMode(this)">Edit precursor</button>
                 <span class="info-tip" tabindex="0" role="button" aria-label="About edit precursor">
                     <span class="info-tip-icon">?</span>
                     <span class="info-tip-body" role="tooltip">Mark atoms to keep or to change, then ask the model to regenerate this precursor with your selection in mind.</span>
                 </span>
+                {% endif %}
             </div>
             <div class="compound-info" style="display:none;"></div>
             {% with prediction_index = loop.index0 %}

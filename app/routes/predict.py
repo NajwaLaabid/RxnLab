@@ -53,6 +53,22 @@ def _to_route_tree(product_smiles: str, predictions: list) -> dict:
     }
 
 
+def _coerce_params(model_id: str, getter):
+    """Coerce + validate the selected model's params from a value source.
+
+    ``getter(name, default)`` pulls a raw value (form field or JSON key). Returns
+    ``(params, error)`` — ``error`` is a UI-ready string on the first bad value.
+    """
+    spec = registry.get_spec(model_id)
+    params = {}
+    for p in spec.params:
+        try:
+            params[p.name] = p.coerce(getter(p.name, p.default))
+        except ValueError as e:
+            return None, str(e)
+    return params, None
+
+
 def _log_run(*, model_id: str, product_smiles: str, target_mol, params: dict,
              predictions: list, latency_ms: int) -> Optional[uuid.UUID]:
     """Persist a prediction_runs row + predict_returned event. No-op if DB is off."""
@@ -89,6 +105,8 @@ def diffalign():
         return render_template(
             'predict.html',
             results_html='',
+            models=registry.ui_models(),
+            selected_model_id=registry.default_model_id(),
             ux_feedback_form_url=current_app.config.get('UX_FEEDBACK_FORM_URL', ''),
         )
 
@@ -96,7 +114,10 @@ def diffalign():
     smiles = raw_input
     resolved_from = None  # set when we had to resolve a non-SMILES identifier
     n_precursors = request.form.get('n_precursors', 1, type=int)
-    diffusion_steps = request.form.get('diffusion_steps', 1, type=int)
+
+    model_id = request.form.get('model_id', '').strip() or registry.default_model_id()
+    if not registry.is_known(model_id):
+        model_id = registry.default_model_id()
 
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
@@ -112,6 +133,7 @@ def diffalign():
             target_svg=target_svg,
             target_mw=target_mw,
             target_formula=target_formula,
+            supports_inpainting=registry.supports_inpainting(model_id),
             run_id=str(run_id) if run_id else '',
         )
         if is_ajax:
@@ -120,7 +142,8 @@ def diffalign():
             'predict.html',
             smiles=smiles,
             n_precursors=n_precursors,
-            diffusion_steps=diffusion_steps,
+            models=registry.ui_models(),
+            selected_model_id=model_id,
             results_html=results_html,
             ux_feedback_form_url=current_app.config.get('UX_FEEDBACK_FORM_URL', ''),
         )
@@ -131,15 +154,9 @@ def diffalign():
     if not (1 <= n_precursors <= 100):
         return _render(error="Number of precursors must be between 1 and 100.")
 
-    if not (1 <= diffusion_steps <= 50):
-        return _render(error="Diffusion steps must be between 1 and 50.")
-
-    T = 50
-    if T % diffusion_steps != 0:
-        valid = [d for d in range(1, T + 1) if T % d == 0]
-        return _render(
-            error=f"Diffusion steps must evenly divide {T}. Valid values: {valid}"
-        )
+    params, param_error = _coerce_params(model_id, request.form.get)
+    if param_error:
+        return _render(error=param_error)
 
     target_mol = Chem.MolFromSmiles(smiles)
     if target_mol is None:
@@ -161,13 +178,12 @@ def diffalign():
                 )
             )
 
-    model_id = registry.default_model_id()
     t0 = time.monotonic()
     predictions = registry.predict(
         model_id,
         smiles,
         n_precursors=n_precursors,
-        diffusion_steps=diffusion_steps,
+        params=params,
     )
     latency_ms = int((time.monotonic() - t0) * 1000)
 
@@ -209,7 +225,7 @@ def diffalign():
         model_id=model_id,
         product_smiles=smiles,
         target_mol=target_mol,
-        params={'n_precursors': n_precursors, 'diffusion_steps': diffusion_steps},
+        params={'n_precursors': n_precursors, **params},
         predictions=results,
         latency_ms=latency_ms,
     )
@@ -237,12 +253,18 @@ def api_predict():
         return jsonify({'error': f'Invalid SMILES: {smiles}'}), 400
 
     n_precursors = data.get('n_precursors', 1)
-    diffusion_steps = data.get('diffusion_steps', 1)
 
-    model_id = registry.default_model_id()
+    model_id = (data.get('model_id') or '').strip() or registry.default_model_id()
+    if not registry.is_known(model_id):
+        return jsonify({'error': f'Unknown model: {model_id}'}), 400
+
+    params, param_error = _coerce_params(model_id, data.get)
+    if param_error:
+        return jsonify({'error': param_error}), 400
+
     t0 = time.monotonic()
     predictions = registry.predict(
-        model_id, smiles, n_precursors=n_precursors, diffusion_steps=diffusion_steps,
+        model_id, smiles, n_precursors=n_precursors, params=params,
     )
     latency_ms = int((time.monotonic() - t0) * 1000)
 
@@ -256,7 +278,7 @@ def api_predict():
         model_id=model_id,
         product_smiles=smiles,
         target_mol=mol,
-        params={'n_precursors': n_precursors, 'diffusion_steps': diffusion_steps},
+        params={'n_precursors': n_precursors, **params},
         predictions=predictions,
         latency_ms=latency_ms,
     )
@@ -271,7 +293,9 @@ def api_predict():
 def api_inpaint():
     data = request.get_json() or {}
 
-    model_id = registry.default_model_id()
+    model_id = (data.get('model_id') or '').strip() or registry.default_model_id()
+    if not registry.is_known(model_id):
+        return jsonify({'error': f'Unknown model: {model_id}'}), 400
     if not registry.supports_inpainting(model_id):
         return jsonify({'error': f'Model {model_id} does not support inpainting.'}), 400
 

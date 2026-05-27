@@ -88,7 +88,7 @@ def main() -> int:
             _seed()
             native = predict.predict_precursors(smiles, n_precursors=n, diffusion_steps=steps)
             _seed()
-            reg = registry.predict(model_id, smiles, n_precursors=n, diffusion_steps=steps)
+            reg = registry.predict(model_id, smiles, n_precursors=n, params={"diffusion_steps": steps})
 
             probs = _compare(native, reg, ctx)
             print(f"[{'OK' if not probs else 'FAIL'}] {ctx}: native={len(native)} registry={len(reg)}")

@@ -89,6 +89,48 @@
             border-radius: 4px;
             background: white;
         }
+        /* Polished model picker: native <select> with a custom chevron + teal focus. */
+        .model-select-wrap { position: relative; }
+        .model-select {
+            width: 100%;
+            padding: 12px 42px 12px 14px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a2e;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fff;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .model-select:hover { border-color: #b9d4d4; }
+        .model-select:focus {
+            outline: none;
+            border-color: #0d8a8a;
+            box-shadow: 0 0 0 3px rgba(13, 138, 138, 0.15);
+        }
+        .model-select-wrap::after {
+            content: '';
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            width: 9px;
+            height: 9px;
+            margin-top: -7px;
+            border-right: 2px solid #0d8a8a;
+            border-bottom: 2px solid #0d8a8a;
+            transform: rotate(45deg);
+            pointer-events: none;
+        }
+        .model-desc {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.45;
+        }
         .btn-row { display: flex; gap: 10px; margin-top: 20px; }
         button {
             padding: 12px 28px;
@@ -541,6 +583,24 @@
                 </div>
             </div>
 
+            <div class="form-group">
+                <label>
+                    Model
+                    <span class="info-tip" tabindex="0" role="button" aria-label="About model selection">
+                        <span class="info-tip-icon">?</span>
+                        <span class="info-tip-body" role="tooltip">Which single-step retrosynthesis model runs the prediction. Each model has its own architecture and tunable parameters; switching models updates the controls below.</span>
+                    </span>
+                </label>
+                <div class="model-select-wrap">
+                    <select name="model_id" id="model-select" class="model-select" onchange="onModelChange()">
+                        {% for m in models %}
+                        <option value="{{ m.model_id }}" data-desc="{{ m.description }}" {% if m.model_id == selected_model_id %}selected{% endif %}>{{ m.display_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="model-desc" id="model-desc"></div>
+            </div>
+
             <div class="params-grid">
                 <div class="param-box">
                     <label>
@@ -552,21 +612,34 @@
                     </label>
                     <input type="number" name="n_precursors" value="{{ n_precursors or 10 }}" min="1" max="100">
                 </div>
-                <div class="param-box">
+                {% for m in models %}
+                {% for p in m.params %}
+                <div class="param-box model-param" data-for-model="{{ m.model_id }}"
+                     {% if m.model_id != selected_model_id %}style="display:none;"{% endif %}>
                     <label>
-                        Diffusion Steps
-                        <span class="info-tip" tabindex="0" role="button" aria-label="About diffusion steps">
+                        {{ p.label }}
+                        {% if p.help %}
+                        <span class="info-tip" tabindex="0" role="button" aria-label="About {{ p.label }}">
                             <span class="info-tip-icon">?</span>
-                            <span class="info-tip-body" role="tooltip">How many denoising steps the model takes to produce each sample. More steps usually mean cleaner, more confident predictions but slower inference.</span>
+                            <span class="info-tip-body" role="tooltip">{{ p.help }}</span>
                         </span>
+                        {% endif %}
                     </label>
-                    {% set current_steps = diffusion_steps or 10 %}
-                    <select name="diffusion_steps">
-                        {% for d in [1, 2, 5, 10, 25, 50] %}
-                        <option value="{{ d }}" {% if d == current_steps %}selected{% endif %}>{{ d }}</option>
+                    {% if p.kind == 'select' %}
+                    <select name="{{ p.name }}" {% if m.model_id != selected_model_id %}disabled{% endif %}>
+                        {% for c in p.choices %}
+                        <option value="{{ c }}" {% if c == p.default %}selected{% endif %}>{{ c }}</option>
                         {% endfor %}
                     </select>
+                    {% else %}
+                    <input type="number" name="{{ p.name }}" value="{{ p.default }}"
+                           {% if p.min is not none %}min="{{ p.min }}"{% endif %}
+                           {% if p.max is not none %}max="{{ p.max }}"{% endif %}
+                           {% if m.model_id != selected_model_id %}disabled{% endif %}>
+                    {% endif %}
                 </div>
+                {% endfor %}
+                {% endfor %}
             </div>
 
             <div class="btn-row">
@@ -623,6 +696,21 @@
             }
         } catch(e) {}
     })();
+
+    /* Show only the selected model's param controls; disabled inputs don't submit. */
+    function onModelChange() {
+        var sel = document.getElementById('model-select');
+        if (!sel) return;
+        var mid = sel.value;
+        document.querySelectorAll('.model-param').forEach(function(box) {
+            var on = box.getAttribute('data-for-model') === mid;
+            box.style.display = on ? '' : 'none';
+            box.querySelectorAll('input, select').forEach(function(el) { el.disabled = !on; });
+        });
+        var desc = document.getElementById('model-desc');
+        var opt = sel.options[sel.selectedIndex];
+        if (desc && opt) desc.textContent = opt.getAttribute('data-desc') || '';
+    }
 
     function setSmiles(smiles) {
         document.getElementById('smiles-input').value = smiles;
@@ -2064,10 +2152,14 @@
 
         form.addEventListener('submit', function(e) {
             e.preventDefault();
-            var stepsInput = form.querySelector('[name="diffusion_steps"]');
+            var modelSel = document.getElementById('model-select');
+            var modelName = modelSel ? modelSel.options[modelSel.selectedIndex].text : 'the model';
+            var stepsInput = form.querySelector('[name="diffusion_steps"]:not([disabled])');
             var nInput = form.querySelector('[name="n_precursors"]');
-            var steps = stepsInput ? stepsInput.value : '1';
             var n = nInput ? nInput.value : '1';
+            var label = 'Running ' + modelName +
+                        (stepsInput ? ' with steps=' + stepsInput.value : '') +
+                        ' for ' + n + ' sample(s)...';
 
             currentTargetSmiles = document.getElementById('smiles-input').value.trim();
             generations = [];
@@ -2075,7 +2167,7 @@
 
             resultsContainer.innerHTML = '';
             submitBtn.disabled = true;
-            showProgress('Running DiffAlign with steps=' + steps + ' for ' + n + ' sample(s)...');
+            showProgress(label);
 
             var formData = new FormData(form);
             fetch('/diffalign', {
@@ -2101,6 +2193,8 @@
                 resultsContainer.innerHTML = '<div class="results-section"><div class="error">Request failed: ' + err.message + '. Please try again.</div></div>';
             });
         });
+
+        onModelChange();  // sync param controls to the initially-selected model
     })();
     </script>
     <script src="{{ url_for('static', filename='feedback.js') }}"></script>
