@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcairo2 \
     libfreetype6 \
     libfontconfig1 \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for OpenShift compatibility
@@ -42,6 +44,16 @@ COPY app ./app
 COPY DiffAlign ./DiffAlign
 COPY evaluation ./evaluation
 RUN pip install --no-cache-dir -e ./DiffAlign
+
+# Fetch DiffAlign checkpoint at build time (gitignored, not in submodule).
+# SHA-pinned to an immutable GitHub Release asset so builds are reproducible.
+ARG DIFFALIGN_CKPT_URL=https://github.com/Aalto-QuML/DiffAlign/releases/download/checkpoints%2Falign-absorbing-v1/diffalign-align-absorbing-v1.tar.gz
+ARG DIFFALIGN_CKPT_SHA256=ec8620eb6d18b481f591d6023c6ddc8c39d9dddcaa7632d05a81535705b5dea0
+RUN mkdir -p /app/DiffAlign/checkpoints && \
+    curl -fL -o /tmp/ckpt.tar.gz "$DIFFALIGN_CKPT_URL" && \
+    echo "$DIFFALIGN_CKPT_SHA256  /tmp/ckpt.tar.gz" | sha256sum -c - && \
+    tar xzf /tmp/ckpt.tar.gz -C /app/DiffAlign/checkpoints && \
+    rm /tmp/ckpt.tar.gz
 
 # OpenShift runs as arbitrary UID but in root group (GID 0)
 # Make sure the app directory is writable by root group
