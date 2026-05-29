@@ -12,3 +12,5 @@ _DS_Store
 .env.production__pycache__/
 *.pyc
 notes/
+
+experiments/
