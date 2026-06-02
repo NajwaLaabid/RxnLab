@@ -37,11 +37,13 @@ def create_app() -> flask.Flask:
     from app.routes.health import bp as health_bp
     from app.routes.landing import bp as landing_bp
     from app.routes.predict import bp as predict_bp
+    from app.routes.search import bp as search_bp
     from app.routes.stats import bp as stats_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(landing_bp)
     app.register_blueprint(predict_bp)
+    app.register_blueprint(search_bp)
     app.register_blueprint(feedback_bp)
     app.register_blueprint(stats_bp)
 

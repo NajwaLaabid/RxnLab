@@ -215,12 +215,15 @@ class ModelRegistry:
 
     def ui_models(self) -> list[dict]:
         """Serializable model + param-schema info for rendering the form."""
+        from app.search import search_enabled  # lazy: search.py imports this module
+
         return [
             {
                 "model_id": s.model_id,
                 "display_name": s.display_name,
                 "description": s.description,
                 "supports_inpainting": s.supports_inpainting,
+                "supports_search": search_enabled(s.model_id),
                 "params": [
                     {
                         "name": p.name,

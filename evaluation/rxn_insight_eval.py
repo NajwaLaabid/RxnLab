@@ -9,7 +9,9 @@ def classify_reaction(precursors_smi: str, product_smi: str) -> dict:
         product_smi: product SMILES
 
     Returns:
-        dict with keys: name, class, success, error
+        dict with keys: name, class, fg_reactants, fg_products, success, error
+        (fg_* are the functional groups RXN-Insight detects — a human-readable
+        fallback descriptor for reactions it can't name)
     """
     try:
         from rxn_insight.reaction import Reaction
@@ -17,6 +19,8 @@ def classify_reaction(precursors_smi: str, product_smi: str) -> dict:
         return {
             'name': None,
             'class': None,
+            'fg_reactants': [],
+            'fg_products': [],
             'success': False,
             'error': 'rxn_insight not available',
         }
@@ -28,6 +32,8 @@ def classify_reaction(precursors_smi: str, product_smi: str) -> dict:
         return {
             'name': ri.get('NAME'),
             'class': ri.get('CLASS'),
+            'fg_reactants': ri.get('FG_REACTANTS') or [],
+            'fg_products': ri.get('FG_PRODUCTS') or [],
             'success': True,
             'error': None,
         }
@@ -35,6 +41,8 @@ def classify_reaction(precursors_smi: str, product_smi: str) -> dict:
         return {
             'name': None,
             'class': None,
+            'fg_reactants': [],
+            'fg_products': [],
             'success': False,
             'error': str(e),
         }

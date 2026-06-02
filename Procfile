@@ -1,1 +1,1 @@
-web: gunicorn --bind 0.0.0.0:8080 --workers 1 --timeout 600 --preload wsgi:application
+web: gunicorn --bind 0.0.0.0:8080 --workers 1 --timeout 600 wsgi:application

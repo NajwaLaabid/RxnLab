@@ -18,6 +18,8 @@ pillow
 rdkit
 multiset
 rxn-insight
+# rxn-insight -> rxnmapper imports pkg_resources, removed from setuptools>=81
+setuptools<81
 pubchempy
 
 # Config & logging
