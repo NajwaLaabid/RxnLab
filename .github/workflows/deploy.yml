@@ -1,0 +1,32 @@
+name: Deploy to Hetzner (Coolify)
+
+# Coolify's dashboard is Tailscale-only, so GitHub can't reach it for a native
+# webhook. Instead, on push to main we SSH to the box with a deploy-only key
+# (forced command in authorized_keys -> /home/najwa/.local/bin/rxnlab-deploy.sh)
+# which triggers the Coolify deploy API on localhost. The Coolify token lives on
+# the box, never in GitHub.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-hetzner
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify deploy over SSH
+        env:
+          DEPLOY_KEY: ${{ secrets.HETZNER_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H 89.167.43.87 >> ~/.ssh/known_hosts 2>/dev/null
+          # No command needed: the forced command on the box runs the deploy and
+          # prints the queued-deployment JSON. Non-zero exit fails the job.
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes najwa@89.167.43.87
