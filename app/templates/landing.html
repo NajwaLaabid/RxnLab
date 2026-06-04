@@ -208,9 +208,20 @@
         .card p {
             font-size: 14.5px;
             color: var(--ink-soft);
-            margin: 0 0 22px;
+            margin: 0 0 16px;
             flex-grow: 1;
         }
+        .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 20px; }
+        .badge {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--ink-soft);
+            background: #f0f0ec;
+            border: 1px solid var(--border);
+            padding: 3px 9px;
+            border-radius: 999px;
+        }
+        .badge-accent { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
         .card .card-foot {
             display: flex;
             align-items: center;
@@ -279,7 +290,7 @@
                 <span class="beta-pill">Beta</span>
             </div>
             <nav class="nav">
-                <a href="/diffalign">DiffAlign</a>
+                <a href="/lab">Launch</a>
                 <a href="https://github.com/NajwaLaabid/RetroLab" target="_blank" rel="noopener">GitHub</a>
             </nav>
         </header>
@@ -294,11 +305,11 @@
                 on reaction-level generative modeling.
             </p>
             <div class="cta-row">
-                <a class="btn btn-primary" href="/diffalign">
-                    Open DiffAlign <span class="arrow">→</span>
+                <a class="btn btn-primary" href="/lab">
+                    Single-step prediction <span class="arrow">→</span>
                 </a>
-                <a class="btn btn-secondary" href="https://github.com/NajwaLaabid/RetroLab" target="_blank" rel="noopener">
-                    View on GitHub
+                <a class="btn btn-secondary" href="/multistep">
+                    Multi-step routes <span class="arrow">→</span>
                 </a>
                 {% if ux_feedback_form_url %}
                 <a class="btn btn-feedback" href="{{ ux_feedback_form_url }}" target="_blank" rel="noopener">
@@ -314,47 +325,24 @@
         </section>
 
         <section class="section">
-            <div class="section-label">What you can do</div>
+            <div class="section-label">Supported models</div>
             <div class="projects">
+                {% for m in models %}
                 <div class="card live">
-                    <span class="tag">Predict</span>
-                    <h3>Single-step prediction</h3>
-                    <p>
-                        Predict precursors for a target with DiffAlign (graph diffusion)
-                        or LocalRetro (template-based), and compare architectures on the
-                        same molecule.
-                    </p>
+                    {% if m.arch %}<span class="tag">{{ m.arch.replace('-', ' ') }}</span>{% endif %}
+                    <h3>{{ m.display_name }}</h3>
+                    <p>{{ m.description }}</p>
+                    <div class="badges">
+                        {% if m.training %}<span class="badge">{{ m.training }}</span>{% endif %}
+                        <span class="badge">Single-step</span>
+                        {% if m.multistep %}<span class="badge badge-accent">Multi-step</span>{% endif %}
+                    </div>
                     <div class="card-foot">
                         <span class="open">Open <span class="arrow">→</span></span>
                     </div>
-                    <a class="card-link" href="/diffalign">Single-step prediction</a>
+                    <a class="card-link" href="/lab?model={{ m.model_id }}">{{ m.display_name }}</a>
                 </div>
-                <div class="card live">
-                    <span class="tag">Steer</span>
-                    <h3>Inpaint a prediction</h3>
-                    <p>
-                        Not happy with a disconnection? Keep the atoms you like, mark the
-                        rest, and DiffAlign resamples only what you didn't fix — steering
-                        the model toward the route you want.
-                    </p>
-                    <div class="card-foot">
-                        <span class="open">Try it <span class="arrow">→</span></span>
-                    </div>
-                    <a class="card-link" href="/diffalign">Inpaint a prediction</a>
-                </div>
-                <div class="card live">
-                    <span class="tag">Search</span>
-                    <h3>Multi-step routes</h3>
-                    <p>
-                        Search backward all the way to purchasable building blocks. Get
-                        full synthesis routes, each summarized in plain language with its
-                        reaction types named.
-                    </p>
-                    <div class="card-foot">
-                        <span class="open">Open <span class="arrow">→</span></span>
-                    </div>
-                    <a class="card-link" href="/diffalign?mode=multistep">Multi-step routes</a>
-                </div>
+                {% endfor %}
             </div>
         </section>
 

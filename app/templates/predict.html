@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>DiffAlign: Retrosynthesis through Diffusion</title>
+    <title>RxnLab — {% if multistep %}multi-step{% else %}single-step{% endif %} retrosynthesis</title>
     <script src="https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='feedback.css') }}">
     <style>
@@ -645,7 +645,7 @@
             <span style="font-size:15px;line-height:1;">←</span> RxnLab
         </a>
         <div class="title-row">
-            <h1>DiffAlign: Retrosynthesis through Diffusion</h1>
+            <h1>{% if multistep %}Multi-step retrosynthesis{% else %}Single-step retrosynthesis{% endif %}</h1>
             <span class="beta-pill">Beta</span>
         </div>
         <p class="subtitle">Enter your target molecule below</p>
@@ -661,7 +661,7 @@
         </div>
         {% endif %}
 
-        <form method="post" action="/diffalign" id="predict-form">
+        <form method="post" action="/lab" id="predict-form">
             <div class="form-group">
                 <label>
                     Target Product
@@ -697,17 +697,10 @@
                 <div class="model-desc" id="model-desc"></div>
             </div>
 
-            <div class="form-group" id="search-mode-wrap" style="display:none;">
-                <label class="search-mode-label">
-                    <input type="checkbox" id="search-mode" onchange="onSearchModeChange()">
-                    <span>Multi-step search</span>
-                    <span class="info-tip" tabindex="0" role="button" aria-label="About multi-step search">
-                        <span class="info-tip-icon">?</span>
-                        <span class="info-tip-body" role="tooltip">Instead of a single retro step, recursively search backward until every leaf is a purchasable building block, returning full synthesis routes. Slower (runs in the background); available for search-enabled models only.</span>
-                    </span>
-                </label>
+            {% if multistep %}
+            <div class="form-group" id="search-mode-wrap">
                 {% if catalogs %}
-                <div id="catalog-wrap" style="display:none; margin-top:12px;">
+                <div id="catalog-wrap" style="margin-top:12px;">
                     <label for="catalog-select">
                         Building-block catalog
                         <span class="info-tip" tabindex="0" role="button" aria-label="About building-block catalogs">
@@ -724,8 +717,10 @@
                     </div>
                     <div class="model-desc" id="catalog-desc"></div>
                 </div>
+                {% else %}
+                <div class="model-desc" style="color:#c0392b;">No building-block catalog is installed on this host, so multi-step search can't run here.</div>
                 {% endif %}
-                <div id="search-params" style="display:none; margin-top:12px;">
+                <div id="search-params" style="margin-top:12px;">
                     <div class="params-grid">
                         <div class="param-box">
                             <label>
@@ -750,7 +745,9 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
 
+            {% if not multistep %}
             <div class="params-grid">
                 <div class="param-box">
                     <label>
@@ -791,6 +788,7 @@
                 {% endfor %}
                 {% endfor %}
             </div>
+            {% endif %}
 
             <div class="btn-row">
                 <button type="submit" class="btn-primary" id="submit-btn">Predict Precursors</button>
@@ -860,39 +858,18 @@
         var desc = document.getElementById('model-desc');
         var opt = sel.options[sel.selectedIndex];
         if (desc && opt) desc.textContent = opt.getAttribute('data-desc') || '';
-
-        // Show the multi-step toggle only for search-enabled models; otherwise
-        // hide it and force single-step.
-        var supportsSearch = opt && opt.getAttribute('data-supports-search') === '1';
-        var wrap = document.getElementById('search-mode-wrap');
-        var toggle = document.getElementById('search-mode');
-        if (wrap) wrap.style.display = supportsSearch ? '' : 'none';
-        if (!supportsSearch && toggle) toggle.checked = false;
         onSearchModeChange();
     }
 
-    function searchModeOn() {
-        var t = document.getElementById('search-mode');
-        var wrap = document.getElementById('search-mode-wrap');
-        return !!(t && t.checked && wrap && wrap.style.display !== 'none');
-    }
+    // Multi-step lives on its own page (/multistep); single-step on /lab.
+    var MULTISTEP = {{ 'true' if multistep else 'false' }};
+
+    function searchModeOn() { return MULTISTEP; }
 
     function onSearchModeChange() {
-        var isOn = searchModeOn();
         var btn = document.getElementById('submit-btn');
-        if (btn) btn.textContent = isOn ? 'Find Synthesis Routes' : 'Predict Precursors';
-        // n_precursors / per-model params are single-step knobs; dim them in search
-        // mode. Exclude the search-params grid (those are the multi-step knobs).
-        document.querySelectorAll('.params-grid').forEach(function(g) {
-            if (g.closest('#search-params')) return;
-            g.style.opacity = isOn ? '0.45' : '';
-            g.style.pointerEvents = isOn ? 'none' : '';
-        });
-        var catWrap = document.getElementById('catalog-wrap');
-        if (catWrap) catWrap.style.display = isOn ? '' : 'none';
-        var sp = document.getElementById('search-params');
-        if (sp) sp.style.display = isOn ? '' : 'none';
-        if (isOn) onCatalogChange();
+        if (btn) btn.textContent = MULTISTEP ? 'Find Synthesis Routes' : 'Predict Precursors';
+        if (MULTISTEP) onCatalogChange();
     }
 
     function onCatalogChange() {
@@ -2649,7 +2626,7 @@
             showProgress(label);
 
             var formData = new FormData(form);
-            fetch('/diffalign', {
+            fetch('/lab', {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -2675,26 +2652,12 @@
 
         onModelChange();  // sync param controls to the initially-selected model
 
-        // Deep-link from the landing page: ?mode=multistep drops the user straight
-        // into multi-step search on a search-enabled model; ?smiles= prefills.
+        // ?smiles= prefills the target on either page.
         (function applyDeepLink() {
-            var params = new URLSearchParams(window.location.search);
-            var smiles = params.get('smiles');
+            var smiles = new URLSearchParams(window.location.search).get('smiles');
             if (smiles) {
                 var si = document.getElementById('smiles-input');
                 if (si) si.value = smiles;
-            }
-            if (params.get('mode') === 'multistep') {
-                var sel = document.getElementById('model-select');
-                var opt = sel && Array.prototype.find.call(sel.options, function (o) {
-                    return o.getAttribute('data-supports-search') === '1';
-                });
-                if (opt) {
-                    sel.value = opt.value;
-                    onModelChange();  // reveals the multi-step toggle for this model
-                    var toggle = document.getElementById('search-mode');
-                    if (toggle) { toggle.checked = true; onSearchModeChange(); }
-                }
             }
         })();
     })();

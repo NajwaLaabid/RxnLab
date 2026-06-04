@@ -19,7 +19,7 @@ from app.models_db import Event, PredictionRun
 from app.rendering.classify import classify_reactions
 from app.rendering.pubchem import lookup_all_compounds
 from app.rendering.svg import mol_to_svg, mols_to_svg, serialize_results_json
-from app.search import available_catalogs, default_catalog_id
+from app.search import available_catalogs, default_catalog_id, SEARCH_MODEL_IDS
 from evaluation.pubchem_lookup import resolve_to_smiles
 
 bp = Blueprint('predict', __name__)
@@ -100,14 +100,50 @@ def _log_run(*, model_id: str, product_smiles: str, target_mol, params: dict,
     return run.run_id
 
 
-@bp.route('/diffalign', methods=['GET', 'POST'])
-def diffalign():
+@bp.route('/diffalign')
+def diffalign_redirect():
+    """Legacy route — kept so early-tester bookmarks keep working."""
+    from flask import redirect
+    qs = request.query_string.decode()
+    return redirect('/lab' + (f'?{qs}' if qs else ''), code=301)
+
+
+@bp.route('/multistep')
+def multistep():
+    """Dedicated multi-step search page — search-capable models only."""
+    search_models = [m for m in registry.ui_models() if m['model_id'] in SEARCH_MODEL_IDS]
+    ids = [m['model_id'] for m in search_models]
+    requested = request.args.get('model', '').strip()
+    selected = requested if requested in ids else (ids[0] if ids else '')
+    return render_template(
+        'predict.html',
+        results_html='',
+        multistep=True,
+        models=search_models,
+        selected_model_id=selected,
+        catalogs=available_catalogs(),
+        selected_catalog_id=default_catalog_id(),
+        ux_feedback_form_url=current_app.config.get('UX_FEEDBACK_FORM_URL', ''),
+    )
+
+
+@bp.route('/lab', methods=['GET', 'POST'])
+def lab():
     if request.method == 'GET':
+        if request.args.get('mode') == 'multistep':
+            from flask import redirect
+            return redirect('/multistep', code=302)
+        requested_model = request.args.get('model', '').strip()
+        selected_model_id = (
+            requested_model if registry.is_known(requested_model)
+            else registry.default_model_id()
+        )
         return render_template(
             'predict.html',
             results_html='',
+            multistep=False,
             models=registry.ui_models(),
-            selected_model_id=registry.default_model_id(),
+            selected_model_id=selected_model_id,
             catalogs=available_catalogs(),
             selected_catalog_id=default_catalog_id(),
             ux_feedback_form_url=current_app.config.get('UX_FEEDBACK_FORM_URL', ''),
@@ -145,6 +181,7 @@ def diffalign():
             'predict.html',
             smiles=smiles,
             n_precursors=n_precursors,
+            multistep=False,
             models=registry.ui_models(),
             selected_model_id=model_id,
             catalogs=available_catalogs(),
