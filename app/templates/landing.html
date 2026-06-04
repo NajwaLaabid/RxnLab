@@ -289,8 +289,9 @@
             <h1>Run and evaluate ML models for <em>single-step retrosynthesis.</em></h1>
             <p class="lede">
                 RxnLab is an open-source platform to predict, steer, and evaluate
-                single-step retrosynthesis with modern ML models. Built for chemists
-                and ML researchers working on reaction-level generative modeling.
+                retrosynthesis with modern ML models — from single-step disconnections
+                to full multi-step routes. Built for chemists and ML researchers working
+                on reaction-level generative modeling.
             </p>
             <div class="cta-row">
                 <a class="btn btn-primary" href="/diffalign">
@@ -312,6 +313,51 @@
             {% endif %}
         </section>
 
+        <section class="section">
+            <div class="section-label">What you can do</div>
+            <div class="projects">
+                <div class="card live">
+                    <span class="tag">Predict</span>
+                    <h3>Single-step prediction</h3>
+                    <p>
+                        Predict precursors for a target with DiffAlign (graph diffusion)
+                        or LocalRetro (template-based), and compare architectures on the
+                        same molecule.
+                    </p>
+                    <div class="card-foot">
+                        <span class="open">Open <span class="arrow">→</span></span>
+                    </div>
+                    <a class="card-link" href="/diffalign">Single-step prediction</a>
+                </div>
+                <div class="card live">
+                    <span class="tag">Steer</span>
+                    <h3>Inpaint a prediction</h3>
+                    <p>
+                        Not happy with a disconnection? Keep the atoms you like, mark the
+                        rest, and DiffAlign resamples only what you didn't fix — steering
+                        the model toward the route you want.
+                    </p>
+                    <div class="card-foot">
+                        <span class="open">Try it <span class="arrow">→</span></span>
+                    </div>
+                    <a class="card-link" href="/diffalign">Inpaint a prediction</a>
+                </div>
+                <div class="card live">
+                    <span class="tag">Search</span>
+                    <h3>Multi-step routes</h3>
+                    <p>
+                        Search backward all the way to purchasable building blocks. Get
+                        full synthesis routes, each summarized in plain language with its
+                        reaction types named.
+                    </p>
+                    <div class="card-foot">
+                        <span class="open">Open <span class="arrow">→</span></span>
+                    </div>
+                    <a class="card-link" href="/diffalign?mode=multistep">Multi-step routes</a>
+                </div>
+            </div>
+        </section>
+
         <footer>
             <div class="footer-row">
                 <div>
@@ -319,7 +365,7 @@
                     at the <span>Aalto QuML group</span>.
                 </div>
                 <div class="note">
-                    More tools coming. Next up: model comparison, process visualization, and multi-step planning.
+                    More tools coming. Next up: side-by-side model comparison and deeper evaluation metrics.
                 </div>
             </div>
         </footer>

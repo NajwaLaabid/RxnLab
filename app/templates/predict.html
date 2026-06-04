@@ -2674,6 +2674,29 @@
         });
 
         onModelChange();  // sync param controls to the initially-selected model
+
+        // Deep-link from the landing page: ?mode=multistep drops the user straight
+        // into multi-step search on a search-enabled model; ?smiles= prefills.
+        (function applyDeepLink() {
+            var params = new URLSearchParams(window.location.search);
+            var smiles = params.get('smiles');
+            if (smiles) {
+                var si = document.getElementById('smiles-input');
+                if (si) si.value = smiles;
+            }
+            if (params.get('mode') === 'multistep') {
+                var sel = document.getElementById('model-select');
+                var opt = sel && Array.prototype.find.call(sel.options, function (o) {
+                    return o.getAttribute('data-supports-search') === '1';
+                });
+                if (opt) {
+                    sel.value = opt.value;
+                    onModelChange();  // reveals the multi-step toggle for this model
+                    var toggle = document.getElementById('search-mode');
+                    if (toggle) { toggle.checked = true; onSearchModeChange(); }
+                }
+            }
+        })();
     })();
     </script>
     <script src="{{ url_for('static', filename='feedback.js') }}"></script>
