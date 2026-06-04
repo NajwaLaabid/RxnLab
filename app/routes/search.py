@@ -10,10 +10,27 @@ from rdkit import Chem
 
 from app.jobs import get_job, start_search_job
 from app.registry import registry
-from app.search import search_enabled
+from app.search import default_catalog_id, search_enabled
 from evaluation.pubchem_lookup import resolve_to_smiles
 
 bp = Blueprint('search', __name__)
+
+
+def _clamp_int(value, default: int, lo: int, hi: int) -> int:
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(lo, min(hi, n))
+
+
+def _parse_budget(data: dict) -> dict:
+    """Demo-safe search knobs from the request. Clamped so a bad value can't blow
+    up the box; whole-search time stays at the server default (not user-set)."""
+    return {
+        "max_routes": _clamp_int(data.get("max_routes"), 5, 1, 15),
+        "max_expansion_depth": _clamp_int(data.get("max_expansion_depth"), 6, 1, 12),
+    }
 
 
 @bp.route('/api/search', methods=['POST'])
@@ -26,7 +43,9 @@ def start_search():
     model_id = (data.get('model_id') or '').strip() or registry.default_model_id()
     if not registry.is_known(model_id):
         return jsonify({'error': f'Unknown model: {model_id}'}), 400
-    if not search_enabled(model_id):
+
+    catalog_id = (data.get('catalog_id') or '').strip() or default_catalog_id()
+    if not search_enabled(model_id, catalog_id):
         return jsonify({
             'error': f'Multi-step search is not available for {model_id}.',
         }), 400
@@ -45,8 +64,9 @@ def start_search():
     job_id = start_search_job(
         model_id=model_id,
         product_smiles=smiles,
+        catalog_id=catalog_id,
         session_id=getattr(g, 'session_id', None),
-        budget={},
+        budget=_parse_budget(data),
     )
     if job_id is None:
         return jsonify({'error': 'The server is busy running other searches. Try again shortly.'}), 429

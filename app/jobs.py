@@ -43,6 +43,7 @@ def start_search_job(
     *,
     model_id: str,
     product_smiles: str,
+    catalog_id: str,
     session_id: Optional[uuid.UUID],
     budget: dict,
 ) -> Optional[str]:
@@ -56,6 +57,7 @@ def start_search_job(
         _JOBS[job_id] = {
             "status": "queued",
             "model_id": model_id,
+            "catalog_id": catalog_id,
             "product_smiles": product_smiles,
             "result": None,
             "error": None,
@@ -66,7 +68,7 @@ def start_search_job(
 
     t = threading.Thread(
         target=_run,
-        args=(job_id, model_id, product_smiles, session_id, budget),
+        args=(job_id, model_id, product_smiles, catalog_id, session_id, budget),
         daemon=True,
     )
     t.start()
@@ -97,12 +99,12 @@ def _set(job_id: str, **fields) -> None:
         job["updated"] = time.monotonic()
 
 
-def _run(job_id, model_id, product_smiles, session_id, budget) -> None:
+def _run(job_id, model_id, product_smiles, catalog_id, session_id, budget) -> None:
     from app.search import run_search
 
     _set(job_id, status="running")
     try:
-        result = run_search(model_id, product_smiles, **budget)
+        result = run_search(model_id, product_smiles, catalog_id=catalog_id, **budget)
     except Exception as e:  # surface to the poller; never crash the worker thread
         import traceback
         traceback.print_exc()

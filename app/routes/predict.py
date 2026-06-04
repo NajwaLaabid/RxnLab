@@ -19,6 +19,7 @@ from app.models_db import Event, PredictionRun
 from app.rendering.classify import classify_reactions
 from app.rendering.pubchem import lookup_all_compounds
 from app.rendering.svg import mol_to_svg, mols_to_svg, serialize_results_json
+from app.search import available_catalogs, default_catalog_id
 from evaluation.pubchem_lookup import resolve_to_smiles
 
 bp = Blueprint('predict', __name__)
@@ -107,6 +108,8 @@ def diffalign():
             results_html='',
             models=registry.ui_models(),
             selected_model_id=registry.default_model_id(),
+            catalogs=available_catalogs(),
+            selected_catalog_id=default_catalog_id(),
             ux_feedback_form_url=current_app.config.get('UX_FEEDBACK_FORM_URL', ''),
         )
 
@@ -144,6 +147,8 @@ def diffalign():
             n_precursors=n_precursors,
             models=registry.ui_models(),
             selected_model_id=model_id,
+            catalogs=available_catalogs(),
+            selected_catalog_id=default_catalog_id(),
             results_html=results_html,
             ux_feedback_form_url=current_app.config.get('UX_FEEDBACK_FORM_URL', ''),
         )

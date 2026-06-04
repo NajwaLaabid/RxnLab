@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 import os
 import time
-from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -34,16 +33,75 @@ DEFAULT_LIMIT_GRAPH_NODES = 10000
 DEFAULT_MAX_EXPANSION_DEPTH = 6
 
 
-def search_enabled(model_id: str) -> bool:
-    return model_id in SEARCH_MODEL_IDS and _inventory_path() is not None
+# Buyable-molecule catalogs offered for multi-step search. Each loads from a file
+# on the box's disk, pointed to by an env var. The data (eMolecules / Enamine) is
+# licensed for use, not redistribution — never commit it or bake it into the
+# public image. A catalog is offered only when its file is actually present, so a
+# new one (e.g. Enamine) self-enables once its file is dropped on the box.
+CATALOGS = [
+    {
+        "id": "emolecules-subset",
+        "label": "eMolecules (subset)",
+        "env": "RXNLAB_INVENTORY_PATH",
+        "blurb": ("A ~1.7M-compound subset of the eMolecules aggregator "
+                  "(~13M compounds total), the stock typically used in "
+                  "retrosynthesis ML benchmarks (PaRoutes, syntheseus, "
+                  "AiZynthFinder)."),
+    },
+    {
+        "id": "enamine-global-stock",
+        "label": "Enamine Global Stock",
+        "env": "RXNLAB_ENAMINE_PATH",
+        "blurb": ("About 1.1M in-stock, orderable building blocks from the vendor "
+                  "Enamine, not a stock typically used in the ML literature."),
+    },
+    {
+        "id": "test-fragments",
+        "label": "Test fragments (small)",
+        "env": "RXNLAB_TESTCATALOG_PATH",
+        "blurb": ("A 50k subset of small eMolecules fragments, for testing the "
+                  "catalog selector only, not a real vendor stock."),
+    },
+]
+DEFAULT_CATALOG_ID = "emolecules-subset"
 
 
-def _inventory_path() -> Optional[Path]:
-    raw = (os.environ.get("RXNLAB_INVENTORY_PATH") or "").strip()
+def _catalog_by_id(catalog_id: str) -> Optional[dict]:
+    return next((c for c in CATALOGS if c["id"] == catalog_id), None)
+
+
+def _catalog_path(catalog_id: str) -> Optional[Path]:
+    cat = _catalog_by_id(catalog_id)
+    if cat is None:
+        return None
+    raw = (os.environ.get(cat["env"]) or "").strip()
     if not raw:
         return None
     p = Path(raw)
     return p if p.exists() else None
+
+
+def available_catalogs() -> list:
+    """Catalogs whose backing file is present on disk, with UI metadata."""
+    return [
+        {"id": c["id"], "label": c["label"], "blurb": c["blurb"]}
+        for c in CATALOGS if _catalog_path(c["id"]) is not None
+    ]
+
+
+def default_catalog_id() -> Optional[str]:
+    ids = [c["id"] for c in available_catalogs()]
+    if DEFAULT_CATALOG_ID in ids:
+        return DEFAULT_CATALOG_ID
+    return ids[0] if ids else None
+
+
+def search_enabled(model_id: str, catalog_id: Optional[str] = None) -> bool:
+    if model_id not in SEARCH_MODEL_IDS:
+        return False
+    if catalog_id is None:
+        return bool(available_catalogs())
+    return _catalog_path(catalog_id) is not None
 
 
 def _iter_inventory_smiles(path: Path):
@@ -63,22 +121,30 @@ def _iter_inventory_smiles(path: Path):
                     yield s
 
 
-@lru_cache(maxsize=1)
-def load_inventory():
-    """Build the buyable-molecule inventory once, from disk. Cached for process life."""
+_INVENTORY_CACHE: dict = {}
+
+
+def load_inventory(catalog_id: str):
+    """Build a catalog's buyable-molecule inventory once, from disk. Cached per
+    catalog for process life."""
+    if catalog_id in _INVENTORY_CACHE:
+        return _INVENTORY_CACHE[catalog_id]
     from syntheseus.search.mol_inventory import SmilesListInventory
 
-    path = _inventory_path()
+    path = _catalog_path(catalog_id)
     if path is None:
-        raise RuntimeError("RXNLAB_INVENTORY_PATH unset or missing; cannot run search.")
-    # canonicalize=False: the subset file is already syntheseus-canonical (see
+        raise RuntimeError(f"Catalog {catalog_id!r} unavailable (env unset or file missing).")
+    # canonicalize=False: the catalog files are already syntheseus-canonical (see
     # scripts/build_inventory_subset.py), so loading is just set construction — no
-    # per-startup rdkit pass over ~1.7M molecules.
-    return SmilesListInventory(list(_iter_inventory_smiles(path)), canonicalize=False)
+    # per-startup rdkit pass over millions of molecules.
+    inv = SmilesListInventory(list(_iter_inventory_smiles(path)), canonicalize=False)
+    _INVENTORY_CACHE[catalog_id] = inv
+    return inv
 
 
-def _build_algorithm(model_id: str, *, time_limit_s: float, limit_iterations: int,
-                     limit_graph_nodes: int, max_expansion_depth: int):
+def _build_algorithm(model_id: str, *, catalog_id: str, time_limit_s: float,
+                     limit_iterations: int, limit_graph_nodes: int,
+                     max_expansion_depth: int):
     from syntheseus.search.algorithms.best_first.retro_star import RetroStarSearch
     from syntheseus.search.node_evaluation.common import (
         ConstantNodeEvaluator,
@@ -89,7 +155,7 @@ def _build_algorithm(model_id: str, *, time_limit_s: float, limit_iterations: in
     model.reset(use_cache=True)  # search re-queries the same molecules; cache within a run
     return RetroStarSearch(
         reaction_model=model,
-        mol_inventory=load_inventory(),
+        mol_inventory=load_inventory(catalog_id),
         and_node_cost_fn=ReactionModelLogProbCost(),  # -log model prob
         value_function=ConstantNodeEvaluator(0.0),     # uninformed heuristic (uniform-cost)
         time_limit_s=time_limit_s,
@@ -104,6 +170,7 @@ def run_search(
     model_id: str,
     product_smiles: str,
     *,
+    catalog_id: str = DEFAULT_CATALOG_ID,
     time_limit_s: float = DEFAULT_TIME_LIMIT_S,
     limit_iterations: int = DEFAULT_LIMIT_ITERATIONS,
     limit_graph_nodes: int = DEFAULT_LIMIT_GRAPH_NODES,
@@ -122,6 +189,7 @@ def run_search(
 
     algo = _build_algorithm(
         model_id,
+        catalog_id=catalog_id,
         time_limit_s=time_limit_s,
         limit_iterations=limit_iterations,
         limit_graph_nodes=limit_graph_nodes,
@@ -135,16 +203,31 @@ def run_search(
     route_node_sets = list(iter_routes_cost_order(graph, max_routes=max_routes))
     routes = [_route_to_tree(graph, set(nodes)) for nodes in route_node_sets]
 
+    # Describe every route before returning, so the UI renders them already
+    # classified. Best-effort: a description failure must not sink the search.
+    describe_ms = 0
+    if routes:
+        td = time.monotonic()
+        try:
+            for route, desc in zip(routes, describe_routes(routes)):
+                route["description"] = desc
+        except Exception:
+            import traceback
+            traceback.print_exc()
+        describe_ms = int((time.monotonic() - td) * 1000)
+
     return {
         "schema": "route-tree-v1",
         "root": product_smiles,
         "routes": routes,
         "stats": {
             "model_id": model_id,
+            "catalog_id": catalog_id,
             "n_routes": len(routes),
             "solved": bool(routes),
             "n_nodes": len(graph),
             "elapsed_ms": elapsed_ms,
+            "describe_ms": describe_ms,
         },
     }
 
@@ -229,17 +312,10 @@ def _article(word: str) -> str:
     return "an " if word[:1].lower() in "aeiou" else "a "
 
 
-def describe_route(route: dict) -> dict:
-    """Classify each reaction in a route tree (RXN-Insight) and build a prose
-    summary naming the target and the reaction types, in forward synthetic order.
-
-    Returns ``{"summary": str, "steps": [{class, name, product, precursors}, ...]}``.
-    On-demand only (atom-mapping + classification is seconds per reaction).
-    """
-    from app.rendering.classify import classify_reaction
-    from app.rendering.pubchem import lookup_all_compounds
-
-    steps = []   # each: {depth, product, precursors: [smiles]}
+def _route_steps(route: dict) -> list:
+    """Flatten a route tree into reaction steps in forward synthetic order
+    (deepest first). Each step: ``{depth, product, precursors: [smiles]}``."""
+    steps = []
     mols = set()
 
     def walk(node: dict, depth: int) -> None:
@@ -252,23 +328,11 @@ def describe_route(route: dict) -> dict:
             walk(k, depth + 1)
 
     walk(route, 0)
-    steps.sort(key=lambda s: -s["depth"])  # forward order: deepest step first
+    steps.sort(key=lambda s: -s["depth"])
+    return steps, mols
 
-    profiles = {p.get("smiles"): p for p in lookup_all_compounds(sorted(mols))}
 
-    def name_of(smi: str) -> str:
-        p = profiles.get(smi) or {}
-        if p.get("found"):
-            names = p.get("short_names") or []
-            return names[0] if names else (p.get("iupac") or smi)
-        return smi
-
-    for s in steps:
-        info = classify_reaction(".".join(s["precursors"]), s["product"])
-        s["info"] = info
-        s["label"] = _reaction_label(info)
-        s["short_label"] = _short_label(info)
-
+def _summarize(route: dict, steps: list, name_of) -> dict:
     target_name = name_of(route["product"])
     if not steps:
         summary = f"{target_name} is already a purchasable building block."
@@ -289,3 +353,77 @@ def describe_route(route: dict) -> dict:
                   "fg_transform": _fg_transform(s["info"]),
                   "product": s["product"], "precursors": s["precursors"]} for s in steps]
     return {"summary": summary, "steps": out_steps}
+
+
+def describe_routes(routes: list) -> list:
+    """Classify and prose-summarize a batch of route trees.
+
+    Fast path for the whole displayed set: every reaction and molecule is
+    deduplicated across routes (routes share sub-trees), so each is classified /
+    looked up exactly once. The network-bound PubChem batch runs in a background
+    thread that overlaps the CPU-bound (and serialized — see ``_CLASSIFY_LOCK``)
+    classification, so the two dominant costs run concurrently.
+
+    Returns one ``{"summary", "steps"}`` dict per input route, in order.
+    """
+    import threading
+
+    from app.rendering.classify import classify_reaction
+    from app.rendering.pubchem import lookup_all_compounds
+
+    per_route = [_route_steps(r) for r in routes]
+    all_mols = set()
+    rxn_info = {}  # (precursors_joined, product) -> classification dict
+    for steps, mols in per_route:
+        all_mols |= mols
+        for s in steps:
+            rxn_info[(".".join(s["precursors"]), s["product"])] = None
+
+    profiles_box = {}
+
+    def _fetch_pubchem():
+        profiles_box["p"] = {
+            p.get("smiles"): p for p in lookup_all_compounds(sorted(all_mols))
+        }
+
+    th = threading.Thread(target=_fetch_pubchem, daemon=True)
+    th.start()
+
+    for key in rxn_info:
+        rxn_info[key] = classify_reaction(key[0], key[1])
+
+    th.join()
+    profiles = profiles_box.get("p", {})
+
+    def name_of(smi: str) -> str:
+        p = profiles.get(smi) or {}
+        if p.get("found"):
+            names = p.get("short_names") or []
+            return names[0] if names else (p.get("iupac") or smi)
+        return smi
+
+    out = []
+    for route, (steps, _mols) in zip(routes, per_route):
+        for s in steps:
+            info = rxn_info[(".".join(s["precursors"]), s["product"])]
+            s["info"] = info
+            s["label"] = _reaction_label(info)
+            s["short_label"] = _short_label(info)
+        out.append(_summarize(route, steps, name_of))
+    return out
+
+
+def describe_route(route: dict) -> dict:
+    """Single-route description (the on-demand ``/api/search/describe`` path)."""
+    return describe_routes([route])[0]
+
+
+def warm_classifier() -> None:
+    """Pre-load rxn_insight + RXNMapper (a ~7s one-time import) so the first
+    search / description doesn't pay it. Best-effort; safe to fail."""
+    try:
+        from app.rendering.classify import classify_reaction
+        classify_reaction("CC(=O)O.NC", "CC(=O)NC")
+    except Exception:
+        import traceback
+        traceback.print_exc()

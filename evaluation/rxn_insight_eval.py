@@ -1,4 +1,10 @@
 """Reaction classification using rxn_insight."""
+import threading
+
+# rxn_insight constructs a fresh RXNMapper (a torch model) on each unmapped
+# reaction; two constructions racing in different threads crash on meta tensors
+# ("Cannot copy out of meta tensor"). Serialize the model-touching section.
+_CLASSIFY_LOCK = threading.Lock()
 
 
 def classify_reaction(precursors_smi: str, product_smi: str) -> dict:
@@ -27,8 +33,9 @@ def classify_reaction(precursors_smi: str, product_smi: str) -> dict:
 
     rxn_smi = f"{precursors_smi}>>{product_smi}"
     try:
-        rxn = Reaction(rxn_smi)
-        ri = rxn.get_reaction_info()
+        with _CLASSIFY_LOCK:
+            rxn = Reaction(rxn_smi)
+            ri = rxn.get_reaction_info()
         return {
             'name': ri.get('NAME'),
             'class': ri.get('CLASS'),

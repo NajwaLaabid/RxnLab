@@ -47,7 +47,21 @@ def create_app() -> flask.Flask:
     app.register_blueprint(feedback_bp)
     app.register_blueprint(stats_bp)
 
+    _warm_classifier_async()
+
     return app
+
+
+def _warm_classifier_async() -> None:
+    """Load rxn_insight/RXNMapper in the background at boot so the first route
+    description doesn't eat the ~7s import."""
+    import threading
+
+    def _warm():
+        from app.search import warm_classifier
+        warm_classifier()
+
+    threading.Thread(target=_warm, daemon=True).start()
 
 
 # UA substrings that mark a non-human client. Matched case-insensitively;

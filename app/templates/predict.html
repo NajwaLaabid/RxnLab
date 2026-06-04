@@ -706,6 +706,49 @@
                         <span class="info-tip-body" role="tooltip">Instead of a single retro step, recursively search backward until every leaf is a purchasable building block, returning full synthesis routes. Slower (runs in the background); available for search-enabled models only.</span>
                     </span>
                 </label>
+                {% if catalogs %}
+                <div id="catalog-wrap" style="display:none; margin-top:12px;">
+                    <label for="catalog-select">
+                        Building-block catalog
+                        <span class="info-tip" tabindex="0" role="button" aria-label="About building-block catalogs">
+                            <span class="info-tip-icon">?</span>
+                            <span class="info-tip-body" role="tooltip">The set of purchasable molecules the search stops at. A route is "solved" only when every leaf is in the selected catalog, so the catalog choice affects which routes are found.</span>
+                        </span>
+                    </label>
+                    <div class="model-select-wrap">
+                        <select id="catalog-select" class="model-select" onchange="onCatalogChange()">
+                            {% for c in catalogs %}
+                            <option value="{{ c.id }}" data-blurb="{{ c.blurb }}" {% if c.id == selected_catalog_id %}selected{% endif %}>{{ c.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="model-desc" id="catalog-desc"></div>
+                </div>
+                {% endif %}
+                <div id="search-params" style="display:none; margin-top:12px;">
+                    <div class="params-grid">
+                        <div class="param-box">
+                            <label>
+                                Max routes
+                                <span class="info-tip" tabindex="0" role="button" aria-label="About max routes">
+                                    <span class="info-tip-icon">?</span>
+                                    <span class="info-tip-body" role="tooltip">How many distinct synthesis routes to return, in increasing cost order. More routes take slightly longer to describe.</span>
+                                </span>
+                            </label>
+                            <input type="number" id="search-max-routes" value="5" min="1" max="15">
+                        </div>
+                        <div class="param-box">
+                            <label>
+                                Max route length
+                                <span class="info-tip" tabindex="0" role="button" aria-label="About max route length">
+                                    <span class="info-tip-icon">?</span>
+                                    <span class="info-tip-body" role="tooltip">The deepest the search expands a route (number of reaction steps from product to building blocks). Lower is faster but may miss longer syntheses.</span>
+                                </span>
+                            </label>
+                            <input type="number" id="search-max-depth" value="6" min="1" max="12">
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="params-grid">
@@ -838,11 +881,26 @@
         var isOn = searchModeOn();
         var btn = document.getElementById('submit-btn');
         if (btn) btn.textContent = isOn ? 'Find Synthesis Routes' : 'Predict Precursors';
-        // n_precursors / per-model params are single-step knobs; dim them in search mode.
+        // n_precursors / per-model params are single-step knobs; dim them in search
+        // mode. Exclude the search-params grid (those are the multi-step knobs).
         document.querySelectorAll('.params-grid').forEach(function(g) {
+            if (g.closest('#search-params')) return;
             g.style.opacity = isOn ? '0.45' : '';
             g.style.pointerEvents = isOn ? 'none' : '';
         });
+        var catWrap = document.getElementById('catalog-wrap');
+        if (catWrap) catWrap.style.display = isOn ? '' : 'none';
+        var sp = document.getElementById('search-params');
+        if (sp) sp.style.display = isOn ? '' : 'none';
+        if (isOn) onCatalogChange();
+    }
+
+    function onCatalogChange() {
+        var sel = document.getElementById('catalog-select');
+        var desc = document.getElementById('catalog-desc');
+        if (!sel || !desc) return;
+        var opt = sel.options[sel.selectedIndex];
+        desc.textContent = opt ? (opt.getAttribute('data-blurb') || '') : '';
     }
 
     function setSmiles(smiles) {
@@ -2393,14 +2451,51 @@
            + (routes.length > 1 ? 's' : '') + '</strong> found · '
            + (st.n_nodes || 0).toLocaleString() + ' nodes explored in ' + secs + 's</div>';
         routes.forEach(function(r, i) {
+            var hasDesc = _hasDescription(r);
             h += '<div class="route-block"><div class="route-title">Route ' + (i + 1) + '</div>'
-               + '<button type="button" class="route-describe-btn" onclick="describeRoute(this,' + i + ')">Describe route</button>'
-               + '<div class="route-desc" style="display:none;"></div>'
+               + '<button type="button" class="route-describe-btn" onclick="describeRoute(this,' + i + ')">'
+               + (hasDesc ? 'Hide description' : 'Describe route') + '</button>'
+               + '<div class="route-desc"' + (hasDesc ? '' : ' style="display:none;"') + '></div>'
                + '<div class="route-tree-scroll">' + _routeNodeHtml(r) + '</div></div>';
         });
         h += '</div>';
         rc.innerHTML = h;
         _drawRouteMolecules(rc);
+        var blocks = rc.querySelectorAll('.route-block');
+        routes.forEach(function(r, i) {
+            if (_hasDescription(r)) _fillDescPanel(blocks[i], r.description);
+        });
+    }
+
+    function _hasDescription(r) {
+        return !!(r && r.description
+            && (r.description.summary || (r.description.steps && r.description.steps.length)));
+    }
+
+    function _descInnerHtml(d) {
+        var h = '<div class="route-desc-summary">' + escapeHtml(d.summary || '') + '</div>';
+        if (d.steps && d.steps.length) {
+            h += '<ol class="route-desc-steps">';
+            d.steps.forEach(function(s) {
+                var detail = '';
+                if (s.short_label === 'unidentified reaction type') {
+                    detail = s.fg_transform || '';
+                } else if (s.name && s.name.toLowerCase() !== (s['class'] || '').toLowerCase()) {
+                    detail = s.name;
+                }
+                var li = '<strong>' + escapeHtml(s.short_label || 'reaction') + '</strong>';
+                if (detail) li += ' <span class="route-desc-detail">— ' + escapeHtml(detail) + '</span>';
+                h += '<li>' + li + '</li>';
+            });
+            h += '</ol>';
+        }
+        return h;
+    }
+
+    function _fillDescPanel(block, d) {
+        var panel = block.querySelector('.route-desc');
+        panel.innerHTML = _descInnerHtml(d);
+        _annotateRouteTree(block, d.steps);  // label the tree connectors
     }
 
     function _annotateRouteTree(block, steps) {
@@ -2429,6 +2524,12 @@
         }
         var route = _searchRoutes[idx];
         if (!route) return;
+        if (_hasDescription(route)) {  // already classified during search — just show it
+            if (!panel.innerHTML) _fillDescPanel(block, route.description);
+            panel.style.display = 'block';
+            btn.textContent = 'Hide description';
+            return;
+        }
         btn.disabled = true;
         btn.textContent = 'Analyzing…';
         panel.style.display = 'block';
@@ -2447,25 +2548,7 @@
                 panel.innerHTML = '<span style="color:#c0392b;">' + escapeHtml(res.j.error || 'failed') + '</span>';
                 return;
             }
-            var d = res.j;
-            var h = '<div class="route-desc-summary">' + escapeHtml(d.summary || '') + '</div>';
-            if (d.steps && d.steps.length) {
-                h += '<ol class="route-desc-steps">';
-                d.steps.forEach(function(s) {
-                    var detail = '';
-                    if (s.short_label === 'unidentified reaction type') {
-                        detail = s.fg_transform || '';
-                    } else if (s.name && s.name.toLowerCase() !== (s['class'] || '').toLowerCase()) {
-                        detail = s.name;
-                    }
-                    var li = '<strong>' + escapeHtml(s.short_label || 'reaction') + '</strong>';
-                    if (detail) li += ' <span class="route-desc-detail">— ' + escapeHtml(detail) + '</span>';
-                    h += '<li>' + li + '</li>';
-                });
-                h += '</ol>';
-            }
-            panel.innerHTML = h;
-            _annotateRouteTree(block, d.steps);  // label the tree connectors
+            _fillDescPanel(block, res.j);
         })
         .catch(function(err) {
             btn.disabled = false;
@@ -2504,6 +2587,10 @@
         var smiles = document.getElementById('smiles-input').value.trim();
         var modelSel = document.getElementById('model-select');
         var modelId = modelSel ? modelSel.value : '';
+        var catSel = document.getElementById('catalog-select');
+        var catalogId = catSel ? catSel.value : '';
+        var maxRoutesEl = document.getElementById('search-max-routes');
+        var maxDepthEl = document.getElementById('search-max-depth');
         var rc = document.getElementById('results-container');
         if (!smiles) {
             rc.innerHTML = '<div class="results-section"><div class="error">'
@@ -2517,7 +2604,11 @@
         fetch('/api/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify({ smiles: smiles, model_id: modelId })
+            body: JSON.stringify({
+                smiles: smiles, model_id: modelId, catalog_id: catalogId,
+                max_routes: maxRoutesEl ? maxRoutesEl.value : undefined,
+                max_expansion_depth: maxDepthEl ? maxDepthEl.value : undefined
+            })
         })
         .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, j: j }; }); })
         .then(function(res) {
