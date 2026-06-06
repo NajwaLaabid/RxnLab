@@ -35,6 +35,19 @@ DEFAULT_LIMIT_ITERATIONS = 100
 DEFAULT_LIMIT_GRAPH_NODES = 10000
 DEFAULT_MAX_EXPANSION_DEPTH = 6
 
+# Per-model wall-clock/iteration budget overrides. DiffAlign runs on a Modal GPU at
+# ~5-8s/expansion (a diffusion sample over the network) vs LocalRetro's sub-second CPU
+# templates, so it gets a longer time limit but fewer iterations. Search is an async job
+# with a progress bar, so a ~2-3min DiffAlign search is acceptable UX. (User-facing knobs
+# — max_routes, max_expansion_depth — are separate; these are the whole-search caps.)
+_MODEL_SEARCH_BUDGET = {
+    "diffalign-align-absorbing-v1": {
+        "time_limit_s": 150.0,
+        "limit_iterations": 25,
+        "limit_graph_nodes": 4000,
+    },
+}
+
 
 # Buyable-molecule catalogs offered for multi-step search. Each loads from a file
 # on the box's disk, pointed to by an env var. The data (eMolecules / Enamine) is
@@ -174,13 +187,17 @@ def run_search(
     product_smiles: str,
     *,
     catalog_id: str = DEFAULT_CATALOG_ID,
-    time_limit_s: float = DEFAULT_TIME_LIMIT_S,
-    limit_iterations: int = DEFAULT_LIMIT_ITERATIONS,
-    limit_graph_nodes: int = DEFAULT_LIMIT_GRAPH_NODES,
+    time_limit_s: Optional[float] = None,
+    limit_iterations: Optional[int] = None,
+    limit_graph_nodes: Optional[int] = None,
     max_routes: int = DEFAULT_MAX_ROUTES,
     max_expansion_depth: int = DEFAULT_MAX_EXPANSION_DEPTH,
 ) -> dict:
     """Run multi-step search and return a ``route-tree-v1`` result.
+
+    ``time_limit_s`` / ``limit_iterations`` / ``limit_graph_nodes`` default to the
+    per-model budget (``_MODEL_SEARCH_BUDGET``, else the global defaults) when not
+    given explicitly.
 
     Result shape (extends the Phase-0 schema; multi-step uses ``routes`` where
     single-step uses ``nodes``)::
@@ -189,6 +206,14 @@ def run_search(
     """
     from syntheseus.interface.molecule import Molecule
     from syntheseus.search.analysis.route_extraction import iter_routes_cost_order
+
+    b = _MODEL_SEARCH_BUDGET.get(model_id, {})
+    if time_limit_s is None:
+        time_limit_s = b.get("time_limit_s", DEFAULT_TIME_LIMIT_S)
+    if limit_iterations is None:
+        limit_iterations = b.get("limit_iterations", DEFAULT_LIMIT_ITERATIONS)
+    if limit_graph_nodes is None:
+        limit_graph_nodes = b.get("limit_graph_nodes", DEFAULT_LIMIT_GRAPH_NODES)
 
     algo = _build_algorithm(
         model_id,
