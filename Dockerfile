@@ -62,9 +62,13 @@ RUN chgrp -R 0 /app && chmod -R g=u /app
 # OpenShift runs as an arbitrary UID with no home → HOME defaults to "/" (unwritable),
 # which breaks every lib that caches under $HOME: dgl (/.dgl, fatal for LocalRetro),
 # syntheseus' checkpoint cache, matplotlib, gunicorn. Point them all at /app (g=u writable).
+# GIT_PYTHON_REFRESH=quiet: MEGAN imports GitPython (for training-time experiment
+# logging it never uses at inference); GitPython raises at import when no `git` binary
+# is on PATH, and the slim image has none. `quiet` lets the import succeed.
 ENV HOME=/app \
     MPLCONFIGDIR=/app/.config/matplotlib \
-    SYNTHESEUS_CACHE_DIR=/app/.cache/syntheseus
+    SYNTHESEUS_CACHE_DIR=/app/.cache/syntheseus \
+    GIT_PYTHON_REFRESH=quiet
 
 # Use non-privileged port (OpenShift doesn't allow ports < 1024)
 EXPOSE 8080
