@@ -19,9 +19,12 @@ from typing import Optional
 
 from app.registry import registry
 
-# Models allowed to drive multi-step search. DiffAlign is too slow per-expansion
-# on CPU for a real search; gated until a faster backend (Modal / bigger box).
-SEARCH_MODEL_IDS = ("localretro-uspto50k-v1",)
+# Models allowed to drive multi-step search. DiffAlign runs on a Modal GPU now
+# (app/modal_app.py); each expansion is a network round-trip + GPU diffusion sample,
+# so it's slower per-expansion than template-based LocalRetro — usable, but the
+# per-RPC latency caps how many expansions fit a budget (see notes/syntheseus-upgrade.md;
+# whole-search-on-Modal is the eventual fix). Gated to the Modal backend.
+SEARCH_MODEL_IDS = ("localretro-uspto50k-v1", "diffalign-align-absorbing-v1")
 
 # Default search budget — tuned for the 2-vCPU / 4GB box. Overridable per request.
 # limit_graph_nodes bounds peak memory (the search graph is the dominant cost);
@@ -151,7 +154,7 @@ def _build_algorithm(model_id: str, *, catalog_id: str, time_limit_s: float,
         ReactionModelLogProbCost,
     )
 
-    model = registry._instance(model_id)
+    model = registry.search_instance(model_id)  # lean instance for search models that have one
     model.reset(use_cache=True)  # search re-queries the same molecules; cache within a run
     return RetroStarSearch(
         reaction_model=model,

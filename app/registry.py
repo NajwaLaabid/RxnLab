@@ -68,6 +68,10 @@ class ModelSpec:
     backend: str = "in-process"  # in-process | remote | modal
     params: tuple = ()  # model-specific ParamSpecs (n_precursors is universal)
     metadata: dict = field(default_factory=dict)
+    # Optional separate factory for multi-step search: a leaner instance that skips
+    # the rich per-prediction payload (atom-mapping / mapped-rxn / stereo) since search
+    # only needs reactant SMILES + probability. Falls back to wrapper_factory if unset.
+    search_factory: Optional[Callable[[], Any]] = None
 
 
 def _make_diffalign():
@@ -90,6 +94,24 @@ def _make_diffalign():
     from diffalign.model import DiffAlignModel
 
     return DiffAlignModel(diffusion_steps=1, samples_per_product=1)
+
+
+def _make_diffalign_search():
+    """Lean DiffAlign for multi-step search: Modal proxy hitting /get-reactions when
+    ``RXNLAB_MODAL_DIFFALIGN_URL`` is set, else the in-process wrapper with
+    ``rich_metadata=False``. Search only needs reactant SMILES + probability, so this
+    skips atom-mapping / mapped-rxn / stereo. ``samples_per_product`` is kept high for
+    per-expansion coverage (the model dedups by frequency)."""
+    import os
+
+    if os.environ.get("RXNLAB_MODAL_DIFFALIGN_URL"):
+        from app.backends.modal_proxy import ModalDiffAlign
+
+        return ModalDiffAlign(rich=False, diffusion_steps=1)
+
+    from diffalign.model import DiffAlignModel
+
+    return DiffAlignModel(diffusion_steps=1, samples_per_product=100, rich_metadata=False)
 
 
 LOCALRETRO_FIGSHARE_ID = 23960745
@@ -181,6 +203,7 @@ _SPECS = [
         version="epoch760",
         description="Graph diffusion model for single-step retrosynthesis.",
         wrapper_factory=_make_diffalign,
+        search_factory=_make_diffalign_search,
         supports_inpainting=True,
         supports_steering=False,
         backend="modal",
@@ -254,6 +277,18 @@ class ModelRegistry:
         if model_id not in self._instances:
             self._instances[model_id] = self._specs[model_id].wrapper_factory()
         return self._instances[model_id]
+
+    def search_instance(self, model_id: str):
+        """Instance for multi-step search: the spec's lean ``search_factory`` if set,
+        else the normal instance. Cached separately so it coexists with the
+        single-step (rich) instance for the same model."""
+        spec = self._specs[model_id]
+        if spec.search_factory is None:
+            return self._instance(model_id)
+        key = f"{model_id}::search"
+        if key not in self._instances:
+            self._instances[key] = spec.search_factory()
+        return self._instances[key]
 
     def predict(
         self,
