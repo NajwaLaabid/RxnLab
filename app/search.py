@@ -24,7 +24,12 @@ from app.registry import registry
 # so it's slower per-expansion than template-based LocalRetro — usable, but the
 # per-RPC latency caps how many expansions fit a budget (see notes/syntheseus-upgrade.md;
 # whole-search-on-Modal is the eventual fix). Gated to the Modal backend.
-SEARCH_MODEL_IDS = ("localretro-uspto50k-v1", "diffalign-align-absorbing-v1")
+SEARCH_MODEL_IDS = (
+    "localretro-uspto50k-v1",
+    "diffalign-align-absorbing-v1",
+    "rootaligned-uspto50k-v1",
+    "megan-uspto50k-v1",
+)
 
 # Default search budget — tuned for the 2-vCPU / 4GB box. Overridable per request.
 # limit_graph_nodes bounds peak memory (the search graph is the dominant cost);
@@ -45,6 +50,14 @@ _MODEL_SEARCH_BUDGET = {
         "time_limit_s": 150.0,
         "limit_iterations": 25,
         "limit_graph_nodes": 4000,
+    },
+    # R-SMILES runs in-process on CPU at ~2.5-3s/expansion (20 augmentations + beam,
+    # no network hop) — between LocalRetro's sub-second templates and DiffAlign's Modal
+    # RPC. Moderate time/iter budget; nodes capped for the 4GB box.
+    "rootaligned-uspto50k-v1": {
+        "time_limit_s": 90.0,
+        "limit_iterations": 50,
+        "limit_graph_nodes": 6000,
     },
 }
 

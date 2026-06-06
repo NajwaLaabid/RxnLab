@@ -180,8 +180,53 @@ def _make_localretro():
         torch.load = orig_load
 
 
+def _make_rootaligned():
+    """Instantiate the syntheseus R-SMILES (RootAligned) wrapper on its USPTO-50k
+    checkpoint (auto-downloaded from Figshare on first use).
+
+    ``weights_only=False`` for construction only — OpenNMT's ``load_test_model``
+    calls ``torch.load`` without it, and the checkpoint pickles ``onmt`` globals that
+    torch 2.6's ``weights_only=True`` default rejects (same shim as LocalRetro).
+    """
+    import functools
+
+    import torch
+    from syntheseus.reaction_prediction.inference import RootAlignedModel
+
+    orig_load = torch.load
+    torch.load = functools.partial(orig_load, weights_only=False)
+    try:
+        return RootAlignedModel(device="cpu")
+    finally:
+        torch.load = orig_load
+
+
+def _make_megan():
+    """Instantiate the syntheseus MEGAN wrapper on its USPTO-50k checkpoint
+    (auto-downloaded from Figshare on first use).
+
+    ``device="cpu"`` explicitly: the wrapper only refuses CPU when a GPU is present,
+    so this is a no-op on the CPU box but keeps behaviour stable if a GPU appears.
+    ``weights_only=False`` for the checkpoint load — same torch-2.6 shim as the
+    other wrappers (MEGAN's ``model_best.pt`` pickles custom globals).
+    """
+    import functools
+
+    import torch
+    from syntheseus.reaction_prediction.inference import MEGANModel
+
+    orig_load = torch.load
+    torch.load = functools.partial(orig_load, weights_only=False)
+    try:
+        return MEGANModel(device="cpu")
+    finally:
+        torch.load = orig_load
+
+
 DEFAULT_MODEL_ID = "diffalign-align-absorbing-v1"
 LOCALRETRO_MODEL_ID = "localretro-uspto50k-v1"
+ROOTALIGNED_MODEL_ID = "rootaligned-uspto50k-v1"
+MEGAN_MODEL_ID = "megan-uspto50k-v1"
 
 _DIFFUSION_STEPS = ParamSpec(
     name="diffusion_steps",
@@ -193,6 +238,20 @@ _DIFFUSION_STEPS = ParamSpec(
     help=(
         "How many denoising steps the model takes to produce each sample. More "
         "steps usually mean cleaner, more confident predictions but slower inference."
+    ),
+)
+
+_NUM_AUGMENTATIONS = ParamSpec(
+    name="num_augmentations",
+    label="SMILES augmentations",
+    kind="int",
+    default=20,
+    min=1,
+    max=20,
+    apply=lambda model, v: setattr(model, "num_augmentations", v),
+    help=(
+        "How many randomized SMILES of the target the model translates and votes over. "
+        "More augmentations give better, more stable predictions but slower inference."
     ),
 )
 
@@ -221,6 +280,30 @@ _SPECS = [
         backend="in-process",
         params=(),
         metadata={"arch": "template-based", "training": "USPTO-50k"},
+    ),
+    ModelSpec(
+        model_id=ROOTALIGNED_MODEL_ID,
+        display_name="R-SMILES (RootAligned)",
+        version="uspto50k",
+        description="Template-free SMILES-to-SMILES transformer for single-step retrosynthesis.",
+        wrapper_factory=_make_rootaligned,
+        supports_inpainting=False,
+        supports_steering=False,
+        backend="in-process",
+        params=(_NUM_AUGMENTATIONS,),
+        metadata={"arch": "seq2seq-transformer", "training": "USPTO-50k"},
+    ),
+    ModelSpec(
+        model_id=MEGAN_MODEL_ID,
+        display_name="MEGAN",
+        version="uspto50k",
+        description="Graph-edit (semi-template) model for single-step retrosynthesis.",
+        wrapper_factory=_make_megan,
+        supports_inpainting=False,
+        supports_steering=False,
+        backend="in-process",
+        params=(),
+        metadata={"arch": "graph-edits", "training": "USPTO-50k"},
     ),
 ]
 
