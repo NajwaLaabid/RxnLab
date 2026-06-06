@@ -1,0 +1,31 @@
+# Dependency set for the Modal-hosted DiffAlign service (app/modal_app.py).
+#
+# This is the box's requirements.txt MINUS:
+#   - the web/DB stack (gunicorn/flask/sqlalchemy/psycopg2) — those run on the box, not Modal
+#   - rxn-insight / pubchempy — route classification + PubChem run on the box
+#   - syntheseus[local-retro] / dgl / torchdata — LocalRetro stays in-process on the box
+#   - the CPU torch + CPU PyG pins — installed with CUDA wheels in modal_app.py instead
+#
+# Everything DiffAlign imports at module load (viz/ML helpers) is kept so the
+# `@modal.enter()` model load doesn't trip on a missing import. If a first
+# `modal deploy` surfaces another missing transitive import, add it here and redeploy.
+numpy
+scipy
+networkx
+pandas
+pillow
+rdkit
+multiset
+setuptools<81
+omegaconf
+hydra-core
+pyyaml
+wandb
+pytorch-lightning
+matplotlib
+seaborn
+imageio
+fcd_torch
+syntheseus
+tqdm
+fastapi[standard]

@@ -71,13 +71,22 @@ class ModelSpec:
 
 
 def _make_diffalign():
-    """Instantiate the DiffAlign syntheseus wrapper.
+    """Instantiate DiffAlign: Modal-backed proxy when ``RXNLAB_MODAL_DIFFALIGN_URL``
+    is set (the deployed GPU service — see app/modal_app.py), else the in-process
+    wrapper. The env-gated fallback keeps local dev / the in-process↔Modal parity
+    check working without code changes.
 
-    ``samples_per_product=1`` so a request for ``n`` precursors draws exactly ``n``
-    stochastic samples — matching the native ``predict_precursors`` path
-    (``n_samples = n_precursors``) for the Phase-0 parity guarantee. Heavier
-    sampling for search/coverage is a per-entry knob, not a parity break.
+    In-process: ``samples_per_product=1`` so a request for ``n`` precursors draws
+    exactly ``n`` stochastic samples — matching the native ``predict_precursors``
+    path for the Phase-0 parity guarantee.
     """
+    import os
+
+    if os.environ.get("RXNLAB_MODAL_DIFFALIGN_URL"):
+        from app.backends.modal_proxy import ModalDiffAlign
+
+        return ModalDiffAlign(rich=True, diffusion_steps=1)
+
     from diffalign.model import DiffAlignModel
 
     return DiffAlignModel(diffusion_steps=1, samples_per_product=1)
@@ -174,7 +183,7 @@ _SPECS = [
         wrapper_factory=_make_diffalign,
         supports_inpainting=True,
         supports_steering=False,
-        backend="in-process",
+        backend="modal",
         params=(_DIFFUSION_STEPS,),
         metadata={"arch": "graph-diffusion", "training": "USPTO-50k"},
     ),

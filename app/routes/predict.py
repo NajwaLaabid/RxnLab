@@ -11,8 +11,6 @@ from rdkit.Chem import Descriptors
 from rdkit.Chem.inchi import MolToInchiKey
 from rdkit.Chem.rdMolDescriptors import CalcMolFormula
 
-from DiffAlign.api import predict  # eager model load + DiffAlign-specific inpainting
-
 from app.db import db_enabled
 from app.registry import registry
 from app.models_db import Event, PredictionRun
@@ -371,13 +369,26 @@ def api_inpaint():
         }), 400
 
     try:
-        results, failure_info = predict.predict_with_inpainting(
-            product_smiles=product_smiles,
-            previous_sample_data=previous_sample_data,
-            inpaint_node_indices=selected_node_indices,
-            n_precursors=n_precursors,
-            diffusion_steps=diffusion_steps,
-        )
+        if registry.get_spec(model_id).backend == "modal":
+            # Modal-backed DiffAlign: inpaint runs on the GPU service (the box never
+            # loads the model). The proxy mirrors predict_with_inpainting's contract.
+            results, failure_info = registry._instance(model_id).inpaint(
+                product_smiles=product_smiles,
+                previous_sample_data=previous_sample_data,
+                inpaint_node_indices=selected_node_indices,
+                n_precursors=n_precursors,
+                diffusion_steps=diffusion_steps,
+            )
+        else:
+            from DiffAlign.api import predict  # lazy: loads the in-process model only when used
+
+            results, failure_info = predict.predict_with_inpainting(
+                product_smiles=product_smiles,
+                previous_sample_data=previous_sample_data,
+                inpaint_node_indices=selected_node_indices,
+                n_precursors=n_precursors,
+                diffusion_steps=diffusion_steps,
+            )
     except Exception as e:
         import traceback
         tb = traceback.format_exc()
