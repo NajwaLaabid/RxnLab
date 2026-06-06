@@ -48,6 +48,15 @@ syntheseus[local-retro]
 dgl==1.1.3
 torchdata==0.9.0
 
+# Two more single-step baselines (each a distinct model family). Both run in-process
+# on CPU; checkpoints auto-download from Figshare at runtime (SYNTHESEUS_CACHE_DIR).
+# - root-aligned: R-SMILES seq2seq transformer; pulls OpenNMT-py 2.2.0 + torchtext 0.5.0
+#   (imports fine under torch 2.6) + tensorboard.
+# - megan: graph-edit model; pulls tensorflow 2.20 (CPU) + keras + gin-config. ~1.2GB
+#   resident when loaded — fits the box's worker (1 gunicorn worker, serialized) + swap.
+syntheseus-root-aligned==0.2.0
+syntheseus-megan==0.2.0
+
 # Misc
 tqdm
 
