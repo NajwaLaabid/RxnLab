@@ -1,16 +1,25 @@
+# OS / editor cruft
 .vscode/
 .DS_Store
 *.DS_Store
-_DS_Store
+.playwright-mcp/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Environment / secrets
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
 .env.development
+.env.development.local
 .env.test
-.env.production__pycache__/
-*.pyc
-notes/
+.env.test.local
+.env.production
+.env.production.local
 
+# Local working dirs / scratch (not part of the project)
+notes/
 experiments/
+conversation.md
