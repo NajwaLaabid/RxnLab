@@ -73,6 +73,20 @@
         .nav a:hover { color: var(--ink); text-decoration: none; }
         .nav .soon { color: var(--muted); cursor: default; }
         .nav .soon:hover { color: var(--muted); }
+        .nav a.nav-star {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border: 1px solid var(--accent);
+            border-radius: 16px;
+            color: var(--accent);
+            font-weight: 600;
+            transition: background 0.15s, color 0.15s;
+        }
+        .nav a.nav-star:hover { background: var(--accent); color: #fff; text-decoration: none; }
+        .nav a.nav-star .star-ico { color: #f5b301; }
+        .nav a.nav-star:hover .star-ico { color: #fff; }
 
         /* Hero */
         .hero { padding: 80px 0 70px; }
@@ -242,6 +256,14 @@
             text-indent: -9999px;
             overflow: hidden;
         }
+        .card .card-foot .card-paper {
+            position: relative;
+            z-index: 1;
+            color: #777;
+            text-decoration: none;
+            font-size: 13px;
+        }
+        .card .card-foot .card-paper:hover { color: var(--accent); text-decoration: underline; }
         .card.live:hover .open .arrow { transform: translateX(3px); }
         .card .open .arrow { transition: transform 0.15s ease; }
         .card .soon-pill {
@@ -291,7 +313,11 @@
             </div>
             <nav class="nav">
                 <a href="/lab">Launch</a>
-                <a href="https://github.com/NajwaLaabid/RetroLab" target="_blank" rel="noopener">GitHub</a>
+                <a href="/compare">Compare</a>
+                <a class="nav-star" href="https://github.com/NajwaLaabid/RetroLab" target="_blank" rel="noopener"
+                   aria-label="Star RxnLab on GitHub">
+                    <span class="star-ico">★</span> Star on GitHub
+                </a>
             </nav>
         </header>
 
@@ -310,6 +336,9 @@
                 </a>
                 <a class="btn btn-secondary" href="/multistep">
                     Multi-step routes <span class="arrow">→</span>
+                </a>
+                <a class="btn btn-secondary" href="/compare">
+                    Compare models <span class="arrow">→</span>
                 </a>
                 {% if ux_feedback_form_url %}
                 <a class="btn btn-feedback" href="{{ ux_feedback_form_url }}" target="_blank" rel="noopener">
@@ -339,6 +368,7 @@
                     </div>
                     <div class="card-foot">
                         <span class="open">Open <span class="arrow">→</span></span>
+                        {% if m.paper %}<a class="card-paper" href="{{ m.paper }}" target="_blank" rel="noopener">Paper ↗</a>{% endif %}
                     </div>
                     <a class="card-link" href="/lab?model={{ m.model_id }}">{{ m.display_name }}</a>
                 </div>
@@ -349,11 +379,11 @@
         <footer>
             <div class="footer-row">
                 <div>
-                    Built by <a href="https://github.com/NajwaLaabid" target="_blank" rel="noopener">Najwa Laabid</a>
-                    at the <span>Aalto QuML group</span>.
+                    Built by <a href="https://github.com/NajwaLaabid" target="_blank" rel="noopener">Najwa Laabid</a>,
+                    doctoral student at Aalto University.
                 </div>
                 <div class="note">
-                    More tools coming. Next up: side-by-side model comparison and deeper evaluation metrics.
+                    More tools coming. Next up: more models and deeper evaluation metrics.
                 </div>
             </div>
         </footer>

@@ -19,6 +19,7 @@ def _model_cards() -> list[dict]:
             'description': s.description,
             'arch': meta.get('arch', ''),
             'training': meta.get('training', ''),
+            'paper': meta.get('paper', ''),
             'multistep': s.model_id in SEARCH_MODEL_IDS,
         })
     return cards

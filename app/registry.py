@@ -269,7 +269,7 @@ _NUM_AUGMENTATIONS = ParamSpec(
 _SPECS = [
     ModelSpec(
         model_id=DEFAULT_MODEL_ID,
-        display_name="DiffAlign (align-absorbing)",
+        display_name="DiffAlign",
         version="epoch760",
         description="Graph diffusion model for single-step retrosynthesis.",
         wrapper_factory=_make_diffalign,
@@ -278,7 +278,8 @@ _SPECS = [
         supports_steering=False,
         backend="modal",
         params=(_DIFFUSION_STEPS,),
-        metadata={"arch": "graph-diffusion", "training": "USPTO-50k"},
+        metadata={"arch": "graph-diffusion", "training": "USPTO-50k",
+                  "paper": "https://openreview.net/forum?id=onIro14tHv"},
     ),
     ModelSpec(
         model_id=LOCALRETRO_MODEL_ID,
@@ -290,7 +291,8 @@ _SPECS = [
         supports_steering=False,
         backend="in-process",
         params=(),
-        metadata={"arch": "template-based", "training": "USPTO-50k"},
+        metadata={"arch": "template-based", "training": "USPTO-50k",
+                  "paper": "https://pubs.acs.org/doi/10.1021/jacsau.1c00246"},
     ),
     ModelSpec(
         model_id=ROOTALIGNED_MODEL_ID,
@@ -302,7 +304,8 @@ _SPECS = [
         supports_steering=False,
         backend="in-process",
         params=(_NUM_AUGMENTATIONS,),
-        metadata={"arch": "seq2seq-transformer", "training": "USPTO-50k"},
+        metadata={"arch": "seq2seq-transformer", "training": "USPTO-50k",
+                  "paper": "https://arxiv.org/abs/2203.11444"},
     ),
     ModelSpec(
         model_id=MEGAN_MODEL_ID,
@@ -314,7 +317,8 @@ _SPECS = [
         supports_steering=False,
         backend="in-process",
         params=(),
-        metadata={"arch": "graph-edits", "training": "USPTO-50k"},
+        metadata={"arch": "graph-edits", "training": "USPTO-50k",
+                  "paper": "https://arxiv.org/abs/2006.15426"},
     ),
 ]
 
