@@ -168,6 +168,17 @@ def _make_localretro():
     """
     import functools
 
+    # OpenMP load-order guard: dgl (which LocalRetro imports) and TensorFlow (MEGAN +
+    # the rxn_insight classifier) each bring their own OpenMP runtime, and loading dgl
+    # *before* TF segfaults the process. Single-step requests dodge this by luck of
+    # boot order; the compare endpoint forces both stacks into one worker, so import TF
+    # first here to pin the safe order. Guarded: if TF isn't installed there's no MEGAN
+    # to conflict with.
+    try:
+        import tensorflow  # noqa: F401
+    except Exception:
+        pass
+
     import torch
     from syntheseus.reaction_prediction.inference.local_retro import LocalRetroModel
 

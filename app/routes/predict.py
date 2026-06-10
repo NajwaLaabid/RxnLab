@@ -171,6 +171,7 @@ def lab():
             target_mw=target_mw,
             target_formula=target_formula,
             supports_inpainting=registry.supports_inpainting(model_id),
+            model_id=model_id,
             run_id=str(run_id) if run_id else '',
         )
         if is_ajax:

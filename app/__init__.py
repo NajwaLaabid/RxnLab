@@ -9,6 +9,16 @@ from flask import g, request
 
 
 def create_app() -> flask.Flask:
+    # Import TensorFlow first, before anything pulls in torch/dgl. TF, torch, and dgl
+    # each ship their own OpenMP runtime; whichever loads first wins, and loading TF
+    # *after* torch/dgl segfaults the process. Blueprint registration below imports
+    # torch (via syntheseus), so TF has to come before all of it. See
+    # _warm_classifier_sync for the full rationale. Guarded: no TF ⇒ no MEGAN ⇒ no clash.
+    try:
+        import tensorflow  # noqa: F401
+    except Exception:
+        pass
+
     project_root = Path(__file__).resolve().parent.parent
     sys.path.insert(0, str(project_root))
     sys.path.insert(0, str(project_root / 'DiffAlign'))
@@ -33,6 +43,7 @@ def create_app() -> flask.Flask:
 
     _register_lifecycle(app)
 
+    from app.routes.compare import bp as compare_bp
     from app.routes.feedback import bp as feedback_bp
     from app.routes.health import bp as health_bp
     from app.routes.landing import bp as landing_bp
@@ -44,24 +55,36 @@ def create_app() -> flask.Flask:
     app.register_blueprint(landing_bp)
     app.register_blueprint(predict_bp)
     app.register_blueprint(search_bp)
+    app.register_blueprint(compare_bp)
     app.register_blueprint(feedback_bp)
     app.register_blueprint(stats_bp)
 
-    _warm_classifier_async()
+    _warm_classifier_sync()
 
     return app
 
 
-def _warm_classifier_async() -> None:
-    """Load rxn_insight/RXNMapper in the background at boot so the first route
-    description doesn't eat the ~7s import."""
-    import threading
+def _warm_classifier_sync() -> None:
+    """Initialize the heavy native runtimes on the MAIN thread at boot, in a safe order,
+    before any request is served. This pre-loads rxn_insight/RXNMapper (a ~7s import) so
+    the first description doesn't pay it, but it is also load-bearing for correctness:
 
-    def _warm():
+    - RXNMapper pulls in TensorFlow, and the older async (daemon-thread) warm-up
+      initialized TF/XLA off the main thread, which segfaults. gunicorn also serves
+      requests in worker threads, so TF must be initialized on the main thread here, or
+      the first classify in a worker thread can crash.
+    - dgl (LocalRetro) and TF each ship their own OpenMP runtime; importing dgl *before*
+      TF segfaults. Importing TF first here makes every later dgl import safe.
+
+    The model-comparison endpoint co-loads dgl + TF stacks in one process, which makes
+    both failure modes systematic — hence the synchronous, main-thread warm-up. (TF
+    itself is imported first thing in create_app, before any torch/dgl import.)
+    Best-effort: a failure here must not stop the app from booting."""
+    try:
         from app.search import warm_classifier
         warm_classifier()
-
-    threading.Thread(target=_warm, daemon=True).start()
+    except Exception:
+        pass
 
 
 # UA substrings that mark a non-human client. Matched case-insensitively;

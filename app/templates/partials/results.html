@@ -8,6 +8,10 @@
     <div class="results-header">
         <h2>Results</h2>
         <div class="results-export">
+            <a class="btn-secondary btn-compare"
+               href="/compare?smiles={{ smiles|urlencode }}&models={{ model_id|urlencode }}">
+                Compare with other models →
+            </a>
             <button type="button" class="btn-secondary btn-download-csv"
                     onclick="downloadPredictionsCSV()">Download CSV</button>
             <span class="results-export-note">

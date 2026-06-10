@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RxnLab — compare models</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='predict.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='compare.css') }}">
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#666;text-decoration:none;margin-bottom:18px;">
+            <span style="font-size:15px;line-height:1;">←</span> RxnLab
+        </a>
+        <div class="title-row">
+            <h1>Compare models</h1>
+            <span class="beta-pill">Beta</span>
+        </div>
+        <p class="subtitle">Run several single-step models on one target and see where they agree.</p>
+
+        <form id="compare-form">
+            <div class="form-group">
+                <label>
+                    Target Product
+                    <span class="label-hint">(SMILES, name, InChI, InChIKey, or CAS; resolved via PubChem)</span>
+                </label>
+                <input type="text" name="smiles" placeholder="e.g. CC(=O)Oc1ccccc1C(=O)O, aspirin, 50-78-2, InChI=..."
+                       value="" id="smiles-input">
+                <div class="examples">
+                    Examples:
+                    <code onclick="setSmiles('N#CC1=CC=CN=C1C1=CC=CC(Cl)=N1')">Chloro-bipyridine nitrile</code>
+                    <code onclick="setSmiles('aspirin')">aspirin</code>
+                    <code onclick="setSmiles('caffeine')">caffeine</code>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Models <span class="label-hint">(pick 2–4)</span></label>
+                <div class="model-checks" id="model-checks">
+                    {% for m in models %}
+                    <label class="model-check">
+                        <input type="checkbox" name="model_id" value="{{ m.model_id }}"
+                               {% if m.model_id in default_model_ids %}checked{% endif %}>
+                        <span class="model-check-body">
+                            <span class="model-check-name">{{ m.display_name }}</span>
+                            <span class="model-check-desc">{{ m.description }}</span>
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="params-grid">
+                <div class="param-box">
+                    <label>Predictions per model</label>
+                    <input type="number" name="n_precursors" id="n-precursors" value="10" min="1" max="50">
+                </div>
+            </div>
+
+            <div class="btn-row">
+                <button type="submit" class="btn-primary" id="compare-btn">Compare</button>
+                <button type="button" class="btn-secondary" onclick="clearCompare()">Clear</button>
+            </div>
+
+            <div id="compare-progress" style="display:none; margin-top:20px;">
+                <div style="background:#e9ecef; border-radius:8px; overflow:hidden; height:28px; position:relative;">
+                    <div id="compare-bar" style="height:100%; width:0%; background:linear-gradient(90deg,#4a6fa5,#0d8a8a); border-radius:8px; transition:width 0.3s ease;"></div>
+                    <span id="compare-text" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:13px; font-weight:600; color:#333;"></span>
+                </div>
+            </div>
+        </form>
+
+        <div id="compare-error" class="compare-error" style="display:none;"></div>
+        <div id="compare-results"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='predict-compare.js') }}"></script>
+</body>
+</html>
