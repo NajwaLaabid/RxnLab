@@ -111,6 +111,7 @@
             font-style: italic;
             color: var(--accent);
         }
+        .hero h1 .hl { color: #5a8fd5; }
         .hero .lede {
             font-size: 18px;
             color: var(--ink-soft);
@@ -314,7 +315,7 @@
             <nav class="nav">
                 <a href="/lab">Launch</a>
                 <a href="/compare">Compare</a>
-                <a class="nav-star" href="https://github.com/NajwaLaabid/RetroLab" target="_blank" rel="noopener"
+                <a class="nav-star" href="https://github.com/NajwaLaabid/RxnLab" target="_blank" rel="noopener"
                    aria-label="Star RxnLab on GitHub">
                     <span class="star-ico">★</span> Star on GitHub
                 </a>
@@ -323,12 +324,11 @@
 
         <section class="hero">
             <div class="eyebrow">Open-source retrosynthesis</div>
-            <h1>Run, steer, and evaluate ML models for <em>retrosynthesis.</em></h1>
+            <h1>Machine Learning Models for <span class="hl">Retrosynthesis</span></h1>
             <p class="lede">
-                RxnLab is an open-source platform to predict, steer, and evaluate
-                retrosynthesis with modern ML models — from single-step disconnections
-                to full multi-step routes. Built for chemists and ML researchers working
-                on reaction-level generative modeling.
+                RxnLab is an open-sourced platform to test the latest machine learning
+                models for single and multi-step retrosynthesis. Built for chemists and
+                ML researchers.
             </p>
             <div class="cta-row">
                 <a class="btn btn-primary" href="/lab">
@@ -363,8 +363,6 @@
                     <p>{{ m.description }}</p>
                     <div class="badges">
                         {% if m.training %}<span class="badge">{{ m.training }}</span>{% endif %}
-                        <span class="badge">Single-step</span>
-                        {% if m.multistep %}<span class="badge badge-accent">Multi-step</span>{% endif %}
                     </div>
                     <div class="card-foot">
                         <span class="open">Open <span class="arrow">→</span></span>
@@ -383,7 +381,9 @@
                     doctoral student at Aalto University.
                 </div>
                 <div class="note">
-                    More tools coming. Next up: more models and deeper evaluation metrics.
+                    Model inference and multi-step search powered by
+                    <a href="https://github.com/microsoft/syntheseus" target="_blank" rel="noopener">syntheseus</a>.
+                    More tools coming — next up: more models and deeper evaluation metrics.
                 </div>
             </div>
         </footer>

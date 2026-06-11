@@ -234,10 +234,54 @@ def _make_megan():
         torch.load = orig_load
 
 
+def _make_graph2edits():
+    """Instantiate the syntheseus Graph2Edits wrapper on its USPTO-50k checkpoint
+    (auto-downloaded from Figshare on first use).
+
+    ``weights_only=False`` for the checkpoint load — same torch-2.6 shim as the
+    other wrappers; the checkpoint pickles ``saveables`` (custom model-config
+    objects) that the new default would reject.
+    """
+    import functools
+
+    import torch
+    from syntheseus.reaction_prediction.inference import Graph2EditsModel
+
+    orig_load = torch.load
+    torch.load = functools.partial(orig_load, weights_only=False)
+    try:
+        return Graph2EditsModel(device="cpu")
+    finally:
+        torch.load = orig_load
+
+
+def _make_mhnreact():
+    """Instantiate the syntheseus MHNreact wrapper on its USPTO-50k checkpoint
+    (auto-downloaded from Figshare on first use).
+
+    ``weights_only=False`` for the checkpoint load — same torch-2.6 shim as the
+    other wrappers. The wrapper builds the template fingerprint store at init
+    (the slow part), so first construction is heavier than the other models.
+    """
+    import functools
+
+    import torch
+    from syntheseus.reaction_prediction.inference import MHNreactModel
+
+    orig_load = torch.load
+    torch.load = functools.partial(orig_load, weights_only=False)
+    try:
+        return MHNreactModel(device="cpu")
+    finally:
+        torch.load = orig_load
+
+
 DEFAULT_MODEL_ID = "diffalign-align-absorbing-v1"
 LOCALRETRO_MODEL_ID = "localretro-uspto50k-v1"
 ROOTALIGNED_MODEL_ID = "rootaligned-uspto50k-v1"
 MEGAN_MODEL_ID = "megan-uspto50k-v1"
+GRAPH2EDITS_MODEL_ID = "graph2edits-uspto50k-v1"
+MHNREACT_MODEL_ID = "mhnreact-uspto50k-v1"
 
 _DIFFUSION_STEPS = ParamSpec(
     name="diffusion_steps",
@@ -271,7 +315,7 @@ _SPECS = [
         model_id=DEFAULT_MODEL_ID,
         display_name="DiffAlign",
         version="epoch760",
-        description="Graph diffusion model for single-step retrosynthesis.",
+        description="Graph diffusion model.",
         wrapper_factory=_make_diffalign,
         search_factory=_make_diffalign_search,
         supports_inpainting=True,
@@ -285,7 +329,7 @@ _SPECS = [
         model_id=LOCALRETRO_MODEL_ID,
         display_name="LocalRetro",
         version="uspto50k",
-        description="Template-based graph model for single-step retrosynthesis.",
+        description="Template-based graph model.",
         wrapper_factory=_make_localretro,
         supports_inpainting=False,
         supports_steering=False,
@@ -298,7 +342,7 @@ _SPECS = [
         model_id=ROOTALIGNED_MODEL_ID,
         display_name="R-SMILES (RootAligned)",
         version="uspto50k",
-        description="Template-free SMILES-to-SMILES transformer for single-step retrosynthesis.",
+        description="Template-free SMILES-to-SMILES transformer.",
         wrapper_factory=_make_rootaligned,
         supports_inpainting=False,
         supports_steering=False,
@@ -311,7 +355,7 @@ _SPECS = [
         model_id=MEGAN_MODEL_ID,
         display_name="MEGAN",
         version="uspto50k",
-        description="Graph-edit (semi-template) model for single-step retrosynthesis.",
+        description="Graph-edit (semi-template) model.",
         wrapper_factory=_make_megan,
         supports_inpainting=False,
         supports_steering=False,
@@ -319,6 +363,27 @@ _SPECS = [
         params=(),
         metadata={"arch": "graph-edits", "training": "USPTO-50k",
                   "paper": "https://arxiv.org/abs/2006.15426"},
+    ),
+    # Graph2Edits — PARKED. Loads fine, but RDKit 2026.3.2 breaks its internal
+    # edit-application code (Chem.Kekulize / reaction_actions): predictions come back
+    # as malformed radical SMILES ([c], [O]) on most targets, and beam search returns
+    # zero finished paths for some (aspirin, paracetamol). Forcing clearAromaticFlags
+    # on Kekulize doesn't fix it — the breakage is deeper. Re-register once the wrapper
+    # works under modern RDKit (or in an isolated env with an older pin; pinning rdkit
+    # globally would risk DiffAlign + rxn-insight). Factory kept above.
+    # ModelSpec(GRAPH2EDITS_MODEL_ID, "Graph2Edits", ... wrapper_factory=_make_graph2edits)
+    ModelSpec(
+        model_id=MHNREACT_MODEL_ID,
+        display_name="MHNreact",
+        version="uspto50k",
+        description="Template retrieval with Modern Hopfield Networks.",
+        wrapper_factory=_make_mhnreact,
+        supports_inpainting=False,
+        supports_steering=False,
+        backend="in-process",
+        params=(),
+        metadata={"arch": "template-retrieval", "training": "USPTO-50k",
+                  "paper": "https://arxiv.org/abs/2104.03279"},
     ),
 ]
 
