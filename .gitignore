@@ -23,3 +23,9 @@ __pycache__/
 notes/
 experiments/
 conversation.md
+
+# Licensed building-block catalogs — use, not redistribution. Never commit.
+Enamine_building_blocks_stock.zip
+data_enamine/
+*.sdf
+*.sdf.gz
