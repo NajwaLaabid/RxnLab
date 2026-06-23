@@ -43,7 +43,7 @@ function searchModeOn() { return MULTISTEP; }
 
 function onSearchModeChange() {
     var btn = document.getElementById('submit-btn');
-    if (btn) btn.textContent = MULTISTEP ? 'Find Synthesis Routes' : 'Predict Precursors';
+    if (btn) btn.textContent = MULTISTEP ? 'Find Synthesis Routes' : 'Predict Reactants';
     if (MULTISTEP) onCatalogChange();
 }
 

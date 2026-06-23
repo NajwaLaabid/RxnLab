@@ -15,6 +15,7 @@ function clearProgressTimers() {
 function showProgress(label) {
     var pc = document.getElementById('progress-container');
     pc.style.display = 'block';
+    pc.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setProgress(5, 'Validating input...');
     progressTimers.push(setTimeout(function() {
         setProgress(15, label);

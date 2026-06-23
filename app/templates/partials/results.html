@@ -38,18 +38,18 @@
             {% endif %}
             <div style="margin-top: 8px; font-size: 13px; color: #666;">
                 MW: {{ "%.1f"|format(target_mw) }} ·
-                Generated {{ results|length }} precursor set(s)
+                Generated {{ results|length }} reactant set(s)
             </div>
         </div>
     </div>
 
     <h3 style="margin-bottom: 15px; display: inline-flex; align-items: center;">
-        Predicted Precursor Sets
+        Predicted Reactant Sets
         <span class="info-tip" tabindex="0" role="button" aria-label="About rank and score">
             <span class="info-tip-icon">?</span>
             <span class="info-tip-body" role="tooltip">
-                <strong>Rank #N</strong>: predictions are ordered by score; #1 is the precursor set the model generated most often.<br><br>
-                <strong>Score</strong>: how often the model produced exactly these precursors across multiple sampling attempts. Higher = more consistent (e.g. 0.40 = 40% of samples).
+                <strong>Rank #N</strong>: predictions are ordered by score; #1 is the reactant set the model generated most often.<br><br>
+                <strong>Score</strong>: how often the model produced exactly these reactants across multiple sampling attempts. Higher = more consistent (e.g. 0.40 = 40% of samples).
             </span>
         </span>
     </h3>
@@ -93,10 +93,10 @@
                         title="Queries the PubChem REST API for compound metadata (formula, MW, patents, PubMed mentions). May take a minute for several compounds."
                         onclick="lookupCompounds(this, '{{ result.precursors }}')">Search PubChem</button>
                 {% if supports_inpainting %}
-                <button class="btn-inpaint" onclick="enterInpaintMode(this)">Edit precursor</button>
-                <span class="info-tip" tabindex="0" role="button" aria-label="About edit precursor">
+                <button class="btn-inpaint" onclick="enterInpaintMode(this)">Edit reactant</button>
+                <span class="info-tip" tabindex="0" role="button" aria-label="About edit reactant">
                     <span class="info-tip-icon">?</span>
-                    <span class="info-tip-body" role="tooltip">Mark atoms to keep or to change, then ask the model to regenerate this precursor with your selection in mind.</span>
+                    <span class="info-tip-body" role="tooltip">Mark atoms to keep or to change, then ask the model to regenerate this reactant with your selection in mind.</span>
                 </span>
                 {% endif %}
             </div>

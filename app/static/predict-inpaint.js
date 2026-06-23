@@ -73,7 +73,7 @@ function enterInpaintMode(btn) {
             '<div class="toolbar-row keep-mol-buttons"></div>' +
             '<div class="toolbar-row" style="gap:16px;">' +
                 '<label style="font-size:12px;color:#555;display:flex;align-items:center;gap:4px;">' +
-                    'Precursors <input type="number" class="inpaint-n-precursors" min="1" max="100" value="10" style="width:50px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;">' +
+                    'Reactant sets <input type="number" class="inpaint-n-precursors" min="1" max="100" value="10" style="width:50px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;">' +
                 '</label>' +
                 '<label style="font-size:12px;color:#555;display:flex;align-items:center;gap:4px;">' +
                     'Diff. steps ' +
@@ -900,7 +900,7 @@ function submitInpaint() {
         hideProgress();
         submitBtn.disabled = false;
         var rc = document.getElementById('results-container');
-        rc.innerHTML += '<div class="results-section"><div class="error">Edit-precursor request failed: ' + err.message + '</div></div>';
+        rc.innerHTML += '<div class="results-section"><div class="error">Edit-reactant request failed: ' + err.message + '</div></div>';
     });
 }
 
@@ -994,10 +994,10 @@ function addInpaintGeneration(data, fixedInfo) {
                     '<button class="btn-lookup"' +
                             ' title="Queries the PubChem REST API for compound metadata (formula, MW, patents, PubMed mentions). May take a minute for several compounds."' +
                             ' onclick="lookupCompounds(this, &quot;' + result.precursors.replace(/"/g, '&quot;') + '&quot;)">Search PubChem</button>' +
-                    '<button class="btn-inpaint" onclick="enterInpaintMode(this)">Edit precursor</button>' +
-                    '<span class="info-tip" tabindex="0" role="button" aria-label="About edit precursor">' +
+                    '<button class="btn-inpaint" onclick="enterInpaintMode(this)">Edit reactant</button>' +
+                    '<span class="info-tip" tabindex="0" role="button" aria-label="About edit reactant">' +
                         '<span class="info-tip-icon">?</span>' +
-                        '<span class="info-tip-body" role="tooltip">Mark atoms to keep or to change, then ask the model to regenerate this precursor with your selection in mind.</span>' +
+                        '<span class="info-tip-body" role="tooltip">Mark atoms to keep or to change, then ask the model to regenerate this reactant with your selection in mind.</span>' +
                     '</span>' +
                 '</div>' +
                 '<div class="compound-info" style="display:none;"></div>' +

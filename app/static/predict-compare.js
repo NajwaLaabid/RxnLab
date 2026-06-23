@@ -76,7 +76,7 @@ function renderOverview(data) {
 
     const stats = `
     <div class="overview-stats">
-        <div class="ov-stat"><span class="ov-num">${consensus.length}</span><span class="ov-cap">distinct precursor sets</span></div>
+        <div class="ov-stat"><span class="ov-num">${consensus.length}</span><span class="ov-cap">distinct reactant sets</span></div>
         <div class="ov-stat"><span class="ov-num">${shared}</span><span class="ov-cap">proposed by ≥2 models (${agreePct}%)</span></div>
         ${models
             .map(
@@ -143,7 +143,7 @@ function renderConsensusTable(data) {
 
     const head = `
         <tr>
-            <th class="ct-precursors">Precursors</th>
+            <th class="ct-precursors">Reactants</th>
             ${models.map((m) => `<th class="ct-rank">${esc(m.display_name)}</th>`).join('')}
             <th class="ct-class">Reaction class</th>
         </tr>`;
@@ -181,7 +181,7 @@ function renderConsensusTable(data) {
     return `
     <div class="compare-section" id="consensus-section">
         <h2>Consensus</h2>
-        <div class="section-hint">Precursor sets ranked by agreement, then best rank. Each model's rank is shown side by side; full agreement is highlighted.</div>
+        <div class="section-hint">Reactant sets ranked by agreement, then best rank. Each model's rank is shown side by side; full agreement is highlighted.</div>
         <div class="filter-bar">
             <div class="filter-pills">${pills}</div>
             <span class="active-class" id="active-class" style="display:none;"></span>
@@ -191,7 +191,7 @@ function renderConsensusTable(data) {
                 <thead>${head}</thead>
                 <tbody>${rows}</tbody>
             </table>
-            <div id="ct-empty" class="dist-empty" style="display:none; padding:14px;">No precursor sets match this filter.</div>
+            <div id="ct-empty" class="dist-empty" style="display:none; padding:14px;">No reactant sets match this filter.</div>
         </div>
         <div class="score-note">Ranks are comparable across models; raw scores are not (each model scores on its own scale). Compound names resolved via PubChem.</div>
     </div>`;

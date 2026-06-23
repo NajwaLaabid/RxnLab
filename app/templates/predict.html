@@ -120,10 +120,10 @@
             <div class="params-grid">
                 <div class="param-box">
                     <label>
-                        Number of Precursors
-                        <span class="info-tip" tabindex="0" role="button" aria-label="About number of precursors">
+                        Number of Reactant Sets
+                        <span class="info-tip" tabindex="0" role="button" aria-label="About number of reactant sets">
                             <span class="info-tip-icon">?</span>
-                            <span class="info-tip-body" role="tooltip">How many precursor sets the model samples. The raw samples are then deduplicated, and any set that can't be parsed by RDKit is discarded, so you'll usually see fewer cards than you requested.</span>
+                            <span class="info-tip-body" role="tooltip">How many reactant sets the model samples. The raw samples are then deduplicated, and any set that can't be parsed by RDKit is discarded, so you'll usually see fewer cards than you requested.</span>
                         </span>
                     </label>
                     <input type="number" name="n_precursors" value="{{ n_precursors or 10 }}" min="1" max="100">
@@ -160,7 +160,7 @@
             {% endif %}
 
             <div class="btn-row">
-                <button type="submit" class="btn-primary" id="submit-btn">Predict Precursors</button>
+                <button type="submit" class="btn-primary" id="submit-btn">Predict Reactants</button>
                 <button type="button" class="btn-secondary" onclick="clearForm()">Clear</button>
             </div>
 
