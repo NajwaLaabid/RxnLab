@@ -176,6 +176,15 @@ def _register_lifecycle(app: flask.Flask) -> None:
             db.rollback()
 
     @app.after_request
+    def _security_headers(response):
+        # Conservative, no-breakage hardening. (No CSP yet: the pages use inline
+        # scripts + the unpkg RDKit.js CDN, so a strict policy needs nonces first.)
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'DENY')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        return response
+
+    @app.after_request
     def _set_session_cookie(response):
         cookie_to_set = getattr(g, 'cookie_to_set', None)
         if cookie_to_set:
