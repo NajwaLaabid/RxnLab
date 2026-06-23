@@ -59,6 +59,10 @@ def create_app() -> flask.Flask:
     app.register_blueprint(feedback_bp)
     app.register_blueprint(stats_bp)
 
+    @app.errorhandler(413)
+    def _payload_too_large(_e):
+        return flask.jsonify({'error': 'Request body too large.'}), 413
+
     _warm_classifier_sync()
 
     return app

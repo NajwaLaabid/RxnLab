@@ -192,6 +192,9 @@ def lab():
     if not smiles:
         return _render(error="Please enter a molecule (SMILES, name, InChI, InChIKey, or CAS).")
 
+    if len(raw_input) > current_app.config['MAX_SMILES_LEN']:
+        return _render(error=f"Input too long (max {current_app.config['MAX_SMILES_LEN']} characters).")
+
     if not (1 <= n_precursors <= 100):
         return _render(error="Number of precursors must be between 1 and 100.")
 
@@ -288,12 +291,19 @@ def api_predict():
 
     if not smiles:
         return jsonify({'error': 'No SMILES provided'}), 400
+    if len(smiles) > current_app.config['MAX_SMILES_LEN']:
+        return jsonify({'error': f"SMILES too long (max {current_app.config['MAX_SMILES_LEN']} characters)."}), 400
 
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return jsonify({'error': f'Invalid SMILES: {smiles}'}), 400
 
-    n_precursors = data.get('n_precursors', 1)
+    try:
+        n_precursors = int(data.get('n_precursors', 1))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'n_precursors must be an integer'}), 400
+    if not (1 <= n_precursors <= 100):
+        return jsonify({'error': 'n_precursors must be between 1 and 100'}), 400
 
     model_id = (data.get('model_id') or '').strip() or registry.default_model_id()
     if not registry.is_known(model_id):
@@ -343,11 +353,11 @@ def api_inpaint():
     product_smiles = data.get('product_smiles', '').strip()
     previous_sample_data = data.get('previous_sample_data')
     selected_node_indices = data.get('selected_node_indices', [])
-    n_precursors = data.get('n_precursors', 1)
-    diffusion_steps = data.get('diffusion_steps', 1)
 
     if not product_smiles:
         return jsonify({'error': 'No product SMILES provided'}), 400
+    if len(product_smiles) > current_app.config['MAX_SMILES_LEN']:
+        return jsonify({'error': f"SMILES too long (max {current_app.config['MAX_SMILES_LEN']} characters)."}), 400
     if not previous_sample_data:
         return jsonify({'error': 'No previous sample data provided'}), 400
     if not selected_node_indices:
@@ -355,8 +365,24 @@ def api_inpaint():
 
     if not isinstance(selected_node_indices, list):
         return jsonify({'error': 'selected_node_indices must be a list'}), 400
+
+    try:
+        n_precursors = int(data.get('n_precursors', 1))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'n_precursors must be an integer'}), 400
     if not (1 <= n_precursors <= 100):
         return jsonify({'error': 'n_precursors must be between 1 and 100'}), 400
+
+    # Validate diffusion_steps against the model's own param contract (DiffAlign
+    # allows only divisors of 50), so an API caller can't request an arbitrarily
+    # large step count and tie up the GPU.
+    diffusion_steps = data.get('diffusion_steps', 1)
+    ds_spec = next((p for p in registry.get_spec(model_id).params if p.name == 'diffusion_steps'), None)
+    if ds_spec is not None:
+        try:
+            diffusion_steps = ds_spec.coerce(diffusion_steps)
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
 
     # Reject if every real atom is marked fixed — nothing to regenerate.
     node_mask = previous_sample_data.get('node_mask') or []
@@ -448,6 +474,10 @@ def api_compound_lookup():
 
     if len(smiles_list) > 10:
         return jsonify({'error': 'Maximum 10 compounds per request'}), 400
+
+    max_len = current_app.config['MAX_SMILES_LEN']
+    if any(not isinstance(s, str) or len(s) > max_len for s in smiles_list):
+        return jsonify({'error': f'Each SMILES must be a string under {max_len} characters.'}), 400
 
     compounds = lookup_all_compounds(smiles_list)
     return jsonify({'compounds': compounds})

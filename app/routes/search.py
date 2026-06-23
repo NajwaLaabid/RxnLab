@@ -4,7 +4,7 @@ A search runs in a background thread (see ``app.jobs``); the client starts one w
 ``POST /api/search`` and polls ``GET /api/search/<job_id>`` until ``status`` is
 ``done`` or ``error``.
 """
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request
 
 from rdkit import Chem
 
@@ -39,6 +39,8 @@ def start_search():
     raw_input = (data.get('smiles') or '').strip()
     if not raw_input:
         return jsonify({'error': 'No molecule provided'}), 400
+    if len(raw_input) > current_app.config['MAX_SMILES_LEN']:
+        return jsonify({'error': f"Input too long (max {current_app.config['MAX_SMILES_LEN']} characters)."}), 400
 
     model_id = (data.get('model_id') or '').strip() or registry.default_model_id()
     if not registry.is_known(model_id):

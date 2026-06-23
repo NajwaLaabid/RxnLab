@@ -147,6 +147,8 @@ def api_compare():
     raw_input = (data.get('smiles') or '').strip()
     if not raw_input:
         return jsonify({'error': 'Please enter a molecule.'}), 400
+    if len(raw_input) > current_app.config['MAX_SMILES_LEN']:
+        return jsonify({'error': f"Input too long (max {current_app.config['MAX_SMILES_LEN']} characters)."}), 400
 
     model_ids = data.get('model_ids') or []
     model_ids = [m for m in model_ids if registry.is_known(m)]

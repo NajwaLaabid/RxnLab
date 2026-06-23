@@ -12,3 +12,10 @@ class Config:
         os.environ.get('UX_FEEDBACK_FORM_URL')
         or 'https://docs.google.com/forms/d/e/1FAIpQLSeudYjnKoWLspvSxd9tFjlrfOASsHLH4pBnEgGPeUO0rD2AhA/viewform'
     ).strip()
+    # Reject oversized request bodies before they're read into memory. Flask honors
+    # MAX_CONTENT_LENGTH natively (→ 413). Generous enough for inpaint's
+    # previous_sample_data blob; a guard against multi-hundred-MB abuse.
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB
+    # Longest accepted target identifier (SMILES/name/InChI/CAS). Rejected before
+    # any RDKit parse or PubChem lookup, so a giant string can't burn CPU/network.
+    MAX_SMILES_LEN = 2000
