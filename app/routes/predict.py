@@ -418,9 +418,8 @@ def api_inpaint():
             )
     except Exception as e:
         import traceback
-        tb = traceback.format_exc()
-        current_app.logger.error(f'Inpainting failed:\n{tb}')
-        return jsonify({'error': f'Inpainting failed: {str(e)}', 'traceback': tb.splitlines()[-8:]}), 500
+        current_app.logger.error(f'Inpainting failed:\n{traceback.format_exc()}')
+        return jsonify({'error': f'Inpainting failed: {str(e)}'}), 500
 
     if not results and failure_info:
         stuck = failure_info.get('stuck_atoms', [])
