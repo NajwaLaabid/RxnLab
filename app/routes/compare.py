@@ -151,6 +151,8 @@ def api_compare():
         return jsonify({'error': f"Input too long (max {current_app.config['MAX_SMILES_LEN']} characters)."}), 400
 
     model_ids = data.get('model_ids') or []
+    if not isinstance(model_ids, list):
+        return jsonify({'error': 'model_ids must be a list'}), 400
     model_ids = [m for m in model_ids if registry.is_known(m)]
     # de-dupe, preserve order
     model_ids = list(OrderedDict.fromkeys(model_ids))

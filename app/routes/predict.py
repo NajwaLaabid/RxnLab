@@ -360,11 +360,15 @@ def api_inpaint():
         return jsonify({'error': f"SMILES too long (max {current_app.config['MAX_SMILES_LEN']} characters)."}), 400
     if not previous_sample_data:
         return jsonify({'error': 'No previous sample data provided'}), 400
+    if not isinstance(previous_sample_data, dict):
+        return jsonify({'error': 'previous_sample_data must be an object'}), 400
     if not selected_node_indices:
         return jsonify({'error': 'No atoms selected for inpainting'}), 400
 
     if not isinstance(selected_node_indices, list):
         return jsonify({'error': 'selected_node_indices must be a list'}), 400
+    if not all(isinstance(i, int) and not isinstance(i, bool) for i in selected_node_indices):
+        return jsonify({'error': 'selected_node_indices must be a list of integers'}), 400
 
     try:
         n_precursors = int(data.get('n_precursors', 1))
@@ -470,6 +474,8 @@ def api_compound_lookup():
 
     if not smiles_list:
         return jsonify({'error': 'No SMILES provided'}), 400
+    if not isinstance(smiles_list, list):
+        return jsonify({'error': 'smiles_list must be a list'}), 400
 
     if len(smiles_list) > 10:
         return jsonify({'error': 'Maximum 10 compounds per request'}), 400
